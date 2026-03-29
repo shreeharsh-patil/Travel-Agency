@@ -1,26 +1,26 @@
-# ✈️ Travel Agency
+# ✈️ Horizon Travels
 
-A modern and responsive Travel Agency web application built using React and Vite. This project provides users with an interactive interface to explore destinations, view travel packages, and plan their trips بسهولة.
+A premium, high-fidelity luxury travel agency web application built with **React** and **Vite**. **Horizon Travels** provides a stunning interactive experience for discerning travelers to explore exclusive stays, private aviation, and curated global experiences.
 
 ---
 
-## 🚀 Features
+## 🚀 Experience the Extraordinary
 
-* 🌍 Browse popular travel destinations
-* 🧳 Explore travel packages and offers
-* 🔍 Search and filter destinations
-* 📱 Fully responsive design (mobile + desktop)
-* ⚡ Fast performance with Vite
-* 🎨 Clean and modern UI
+*   🌍 **Exclusive Stays**: From Overwater Sanctuaries to Royal Estates.
+*   🧳 **Curated Experiences**: Unique, behind-the-scenes global adventures.
+*   ✈️ **Private Aviation**: Seamless, on-demand private jet travel.
+*   🎥 **Immersive Hero**: High-performance canvas-based scroll animations.
+*   ⚡ **Ultra Performance**: Built with Vite and optimized for speed.
+*   🎨 **Premium Aesthetic**: Modern, dark-mode design with 8K luxury assets.
 
 ---
 
 ## 🛠️ Tech Stack
 
-* **Frontend:** React (Vite)
-* **Styling:** CSS / Tailwind CSS *(update if needed)*
-* **Build Tool:** Vite
-* **Linting:** ESLint
+*   **Frontend**: React 18+ (Vite)
+*   **Animations**: GSAP (ScrollTrigger), Framer Motion, Lenis (Smooth Scroll)
+*   **Styling**: Modern CSS / Tailwind CSS v4
+*   **Imagery**: Custom-generated 8K luxury assets
 
 ---
 
@@ -29,8 +29,8 @@ A modern and responsive Travel Agency web application built using React and Vite
 ### 1. Clone the repository
 
 ```bash id="6m2tq9"
-git clone <repository-url>
-cd travel-agency
+git clone https://github.com/shreeharsh-patil/Travel-Agency.git
+cd Travel-Agency
 ```
 
 ### 2. Install dependencies
@@ -49,7 +49,7 @@ npm run dev
 
 ## ▶️ Usage
 
-Open your browser and go to:
+Open your browser and navigate to:
 
 ```
 http://localhost:5173
@@ -60,13 +60,16 @@ http://localhost:5173
 ## 📁 Project Structure
 
 ```id="5r1sdt"
-travel-agency/
+Travel-Agency/
 ├── public/
+│   ├── images/          # 8K High-fidelity generated assets
+│   ├── videos/          # Premium background videos
+│   └── frames/          # Hero animation frames
 ├── src/
-│   ├── components/      # Reusable UI components
-│   ├── pages/           # Page components
-│   ├── assets/          # Images and static assets
-│   ├── App.jsx
+│   ├── components/      # Luxury UI components (Header, Bento, etc.)
+│   ├── data/            # Destination and blog datasets
+│   ├── hooks/           # Custom React hooks (useCanvasVideo)
+│   ├── App.jsx          # Route management
 │   └── main.jsx
 ├── package.json
 ├── vite.config.js
@@ -75,13 +78,12 @@ travel-agency/
 
 ---
 
-## 🌟 Future Improvements
+## 🌟 Premium Features
 
-* 🗺️ Google Maps integration
-* 🔐 User authentication
-* 💳 Online booking & payments
-* 📅 Trip scheduling system
-* ⭐ Reviews and ratings
+*   🏙️ **Bento Grid Architecture**: A modern layout for showcasing destinations.
+*   💎 **Liquid Glass UI**: Stunning glassmorphism and backdrop blur effects.
+*   🌊 **Smooth Interaction**: Integrated Lenis for a cinematic scrolling experience.
+*   📱 **Responsive Excellence**: Pixel-perfect layout across all devices.
 
 ---
 
@@ -94,3 +96,4 @@ This project is licensed under the MIT License.
 ## 👨‍💻 Author
 
 Developed by *Shreeharsh Patil*
+Project Rebranded and Enhanced by *Antigravity AI*
