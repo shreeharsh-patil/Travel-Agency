@@ -1,0 +1,37 @@
+@import "tailwindcss";
+
+:root {
+  --bg-color: #0c0c0c;
+  --text-color: #ffffff;
+}
+
+body {
+  background-color: var(--bg-color);
+  color: var(--text-color);
+  font-family: 'Inter', sans-serif;
+  overflow-x: hidden;
+}
+
+/* Custom Utilities for Liquid Glass */
+@layer utilities {
+  .glass-panel {
+    @apply backdrop-blur-md bg-white/5 border border-white/10;
+  }
+}
+
+/* Bento Grid Utilities */
+@layer utilities {
+  .glass-card {
+    background: rgba(255, 255, 255, 0.05);
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+  }
+
+  .text-gradient-gold {
+    background: linear-gradient(to right, #D4AF37, #FF6B35);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    color: transparent;
+  }
+}
