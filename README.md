@@ -96,4 +96,3 @@ This project is licensed under the MIT License.
 ## 👨‍💻 Author
 
 Developed by *Shreeharsh Patil*
-Project Rebranded and Enhanced by *Antigravity AI*
