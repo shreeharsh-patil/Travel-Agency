@@ -31,7 +31,14 @@ export default async function handler(req, res) {
 
     return res.status(200).json({
       token,
-      user: { id: user._id.toString(), email: user.email },
+      user: {
+        id: user._id.toString(),
+        email: user.email,
+        name: user.name || '',
+        phone: user.phone || '',
+        avatar: user.avatar || '',
+        role: user.role || 'user',
+      },
     });
   } catch (err) {
     console.error('[login]', err);

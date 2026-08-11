@@ -10,6 +10,9 @@ export default async function handler(req, res) {
     const placesColl = db.collection(COLLECTIONS.places);
     const reviewsColl = db.collection(COLLECTIONS.reviews);
     const usersColl = db.collection(COLLECTIONS.users);
+    const blogColl = db.collection(COLLECTIONS.blogPosts);
+    const newsletterColl = db.collection(COLLECTIONS.newsletter);
+    const tripsColl = db.collection(COLLECTIONS.trips);
 
     const totalPlaces = await placesColl.countDocuments({});
     const pendingPlaces = await placesColl.countDocuments({ status: 'PENDING' });
@@ -39,7 +42,11 @@ export default async function handler(req, res) {
         totalReviews,
         pendingReviews,
         averageRating,
-        totalUsers: await usersColl.countDocuments({})
+        totalUsers: await usersColl.countDocuments({}),
+        totalBlogPosts: await blogColl.countDocuments({}),
+        publishedBlogPosts: await blogColl.countDocuments({ published: true }),
+        totalNewsletterSubscribers: await newsletterColl.countDocuments({}),
+        totalTrips: await tripsColl.countDocuments({})
       },
       recentSubmissions
     });

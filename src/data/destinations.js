@@ -3,6 +3,8 @@ export const destinations = [
   {
     id: "goa",
     slug: "goa",
+    lat: 15.2993,
+    lon: 74.124,
     title: "Goa Beach & Luxury Villa Retreat",
     name: "Goa",
     location: "Goa, India",
@@ -39,6 +41,8 @@ export const destinations = [
   {
     id: "taj-mahal",
     slug: "taj-mahal",
+    lat: 27.1751,
+    lon: 78.0421,
     title: "Taj Mahal & Royal Agra Heritage",
     name: "Taj Mahal (Agra)",
     location: "Agra, Uttar Pradesh, India",
@@ -73,6 +77,8 @@ export const destinations = [
   {
     id: "jaipur",
     slug: "jaipur",
+    lat: 26.9124,
+    lon: 75.7873,
     title: "Jaipur Pink City & Royal Palaces",
     name: "Jaipur",
     location: "Jaipur, Rajasthan, India",
@@ -107,6 +113,8 @@ export const destinations = [
   {
     id: "kerala",
     slug: "kerala",
+    lat: 9.4981,
+    lon: 76.3388,
     title: "Kerala Backwaters & Houseboat Sanctuary",
     name: "Kerala",
     location: "Alleppey & Munnar, Kerala, India",
@@ -141,6 +149,8 @@ export const destinations = [
   {
     id: "ladakh",
     slug: "ladakh",
+    lat: 34.1526,
+    lon: 77.5771,
     title: "Ladakh & Pangong Lake Expedition",
     name: "Ladakh",
     location: "Leh & Pangong, Ladakh, India",
@@ -173,6 +183,8 @@ export const destinations = [
   {
     id: "udaipur",
     slug: "udaipur",
+    lat: 24.5854,
+    lon: 73.7125,
     title: "Udaipur Lake Palace & Romantic Venice of East",
     name: "Udaipur",
     location: "Udaipur, Rajasthan, India",
@@ -205,6 +217,8 @@ export const destinations = [
   {
     id: "mumbai",
     slug: "mumbai",
+    lat: 19.076,
+    lon: 72.8777,
     title: "Mumbai Coastal Metropolis & Taj Palace",
     name: "Mumbai",
     location: "Mumbai, Maharashtra, India",
@@ -242,6 +256,8 @@ export const destinations = [
   {
     id: "kyoto",
     slug: "kyoto",
+    lat: 35.0116,
+    lon: 135.7681,
     title: "Kyoto Ancient Zen Stays",
     name: "Kyoto",
     location: "Kyoto, Japan",
@@ -277,6 +293,8 @@ export const destinations = [
   {
     id: "amalfi",
     slug: "amalfi",
+    lat: 40.634,
+    lon: 14.6027,
     title: "Amalfi Coast Clifftop Villa",
     name: "Amalfi Coast",
     location: "Amalfi, Italy",
@@ -310,6 +328,8 @@ export const destinations = [
   {
     id: "paris",
     slug: "paris",
+    lat: 48.8566,
+    lon: 2.3522,
     title: "Paris Eiffel & Seine Penthouse",
     name: "Paris",
     location: "Paris, France",
@@ -342,6 +362,8 @@ export const destinations = [
   {
     id: "aspen",
     slug: "aspen",
+    lat: 39.1911,
+    lon: -106.8175,
     title: "Aspen Winter Alpine Chalet",
     name: "Aspen",
     location: "Aspen, USA",
@@ -374,6 +396,8 @@ export const destinations = [
   {
     id: "bali",
     slug: "bali",
+    lat: -8.5069,
+    lon: 115.2625,
     title: "Ubud Jungle Sanctuary",
     name: "Bali",
     location: "Ubud, Indonesia",
@@ -406,6 +430,8 @@ export const destinations = [
   {
     id: "reykjavik",
     slug: "reykjavik",
+    lat: 64.1466,
+    lon: -21.9426,
     title: "Northern Lights Glass Igloo",
     name: "Reykjavik",
     location: "Reykjavik, Iceland",

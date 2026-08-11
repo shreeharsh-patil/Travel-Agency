@@ -193,11 +193,11 @@ export default function GlobalSearchModal({ isOpen, onClose }) {
                   </div>
                 )}
 
-                {/* Free Global Places (OpenStreetMap API) */}
+                {/* Global Destinations */}
                 {externalPlaces.length > 0 && (
                   <div>
-                    <h5 className="font-mono text-xs text-green-400 uppercase tracking-widest mb-3 flex items-center gap-2">
-                      <span>Free OpenStreetMap Destinations</span>
+                    <h5 className="font-mono text-xs text-brand-gold uppercase tracking-widest mb-3 flex items-center gap-2">
+                      <span>Global Destinations</span>
                       <span className="text-white/40">({externalPlaces.length})</span>
                     </h5>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
@@ -205,8 +205,8 @@ export default function GlobalSearchModal({ isOpen, onClose }) {
                         <div key={ext.place_id} className="p-3 rounded-xl bg-white/5 border border-white/10 text-xs space-y-1">
                           <div className="flex justify-between items-center">
                             <span className="font-serif text-white font-semibold truncate">{ext.name}</span>
-                            <span className="text-[10px] font-mono text-green-400 bg-green-500/10 px-2 py-0.5 rounded-full font-bold">
-                              Free Open API
+                            <span className="text-[10px] font-mono text-brand-gold bg-brand-gold/10 px-2 py-0.5 rounded-full font-bold">
+                              Verified
                             </span>
                           </div>
                           <p className="text-white/50 text-[10px] truncate">{ext.displayName}</p>
@@ -218,6 +218,7 @@ export default function GlobalSearchModal({ isOpen, onClose }) {
                     </div>
                   </div>
                 )}
+
 
 
                 {/* Available Travel Packages */}

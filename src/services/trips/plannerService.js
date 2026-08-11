@@ -2,9 +2,13 @@
  * Grounded Trip Planner & Itinerary Service.
  * Generates structured, realistic itineraries referencing verified real places, coordinates,
  * and reasonable travel order without hallucinating fake facts or opening hours.
+ *
+ * Trips are stored locally (offline-first) and best-effort synced to the server
+ * when the user is signed in, which enables share links.
  */
 
 import { formatINR } from '../currency/currencyService.js';
+
 
 export class TripPlannerService {
   async generateItinerary(plannerInput) {
@@ -69,7 +73,11 @@ export class TripPlannerService {
     };
   }
 
-  saveItineraryToAccount(itinerary) {
+  /**
+   * Save an itinerary locally AND best-effort sync to the account server-side
+   * (when signed in). Returns the saved trip with serverId/shareId if synced.
+   */
+  async saveItineraryToAccount(itinerary) {
     try {
       const savedRaw = localStorage.getItem('horizon_my_trips') || '[]';
       const myTrips = JSON.parse(savedRaw);
@@ -80,6 +88,45 @@ export class TripPlannerService {
       };
       myTrips.unshift(newTrip);
       localStorage.setItem('horizon_my_trips', JSON.stringify(myTrips));
+
+      // Best-effort server sync (offline / signed-out trips stay local).
+      const token = localStorage.getItem('horizon_token');
+      if (token) {
+        try {
+          const res = await fetch('/api/trips', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              Authorization: `Bearer ${token}`
+            },
+            body: JSON.stringify({
+              title: `${itinerary.durationDays}-Day Escape to ${itinerary.destination}`,
+              destination: itinerary.destination,
+              durationDays: itinerary.durationDays,
+              travelers: itinerary.travelers,
+              budgetINR: itinerary.budgetINR,
+              formattedBudget: itinerary.formattedBudget,
+              itineraryDays: itinerary.itineraryDays,
+              interests: itinerary.interests
+            })
+          });
+          if (res.ok) {
+            const data = await res.json();
+            if (data.trip) {
+              newTrip.serverId = data.trip._id;
+              newTrip.shareId = data.trip.shareId;
+              newTrip.synced = true;
+              const updated = JSON.parse(localStorage.getItem('horizon_my_trips') || '[]');
+              const idx = updated.findIndex((t) => t.id === newTrip.id);
+              if (idx !== -1) updated[idx] = newTrip;
+              localStorage.setItem('horizon_my_trips', JSON.stringify(updated));
+            }
+          }
+        } catch (err) {
+          console.warn('[PlannerService] Server sync failed (trip stays local):', err);
+        }
+      }
+
       return newTrip;
     } catch (err) {
       console.error('[PlannerService] Save error:', err);
@@ -93,6 +140,63 @@ export class TripPlannerService {
       return JSON.parse(savedRaw);
     } catch {
       return [];
+    }
+  }
+
+  /** Fetch trips synced to the signed-in account from the server. */
+  async fetchServerTrips() {
+    const token = localStorage.getItem('horizon_token');
+    if (!token) return [];
+    try {
+      const res = await fetch('/api/trips', {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      if (res.ok) {
+        const data = await res.json();
+        return data.trips || [];
+      }
+    } catch (err) {
+      console.warn('[PlannerService] Fetch server trips error:', err);
+    }
+    return [];
+  }
+
+  /** Fetch a publicly shared trip by its share id. */
+  async getSharedTrip(shareId) {
+    try {
+      const res = await fetch(`/api/trips?share=${encodeURIComponent(shareId)}`);
+      if (res.ok) {
+        const data = await res.json();
+        return data.trip || null;
+      }
+    } catch (err) {
+      console.warn('[PlannerService] Fetch shared trip error:', err);
+    }
+    return null;
+  }
+
+  /** Remove a trip locally and (when applicable) from the server. */
+  async deleteTrip(localId, serverId) {
+    try {
+      const savedRaw = localStorage.getItem('horizon_my_trips') || '[]';
+      const updated = JSON.parse(savedRaw).filter(
+        (t) => t.id !== localId && t.serverId !== serverId
+      );
+      localStorage.setItem('horizon_my_trips', JSON.stringify(updated));
+    } catch (err) {
+      console.error('[PlannerService] Local delete error:', err);
+    }
+
+    if (!serverId) return;
+    const token = localStorage.getItem('horizon_token');
+    if (!token) return;
+    try {
+      await fetch(`/api/trips?id=${encodeURIComponent(serverId)}`, {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${token}` }
+      });
+    } catch (err) {
+      console.warn('[PlannerService] Server delete error:', err);
     }
   }
 }

@@ -45,11 +45,13 @@ export default function PlanTripPage() {
     }
   };
 
-  const handleSaveToAccount = () => {
+  const handleSaveToAccount = async () => {
     if (!generatedItinerary) return;
-    const saved = PlannerService.saveItineraryToAccount(generatedItinerary);
+    const saved = await PlannerService.saveItineraryToAccount(generatedItinerary);
     if (saved) {
-      alert('Trip plan saved successfully to your account!');
+      alert(saved.synced
+        ? 'Trip plan saved & synced to your account! You can now share it from My Trips.'
+        : 'Trip plan saved to your account! Sign in to sync it across devices & share it.');
       navigate('/my-trips');
     }
   };

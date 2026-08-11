@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from 'react';
 
+const EMPTY_POST = { title: '', category: 'Journal', excerpt: '', content: '', image: '', published: true };
+
 export default function AdminDashboardPage() {
   const [stats, setStats] = useState({
     totalPlaces: 0,
@@ -7,34 +9,46 @@ export default function AdminDashboardPage() {
     approvedPlaces: 0,
     totalReviews: 0,
     pendingReviews: 0,
-    averageRating: 4.8
+    averageRating: 4.8,
+    totalUsers: 0,
+    totalBlogPosts: 0,
+    totalNewsletterSubscribers: 0,
+    totalTrips: 0
   });
 
-  const [activeTab, setActiveTab] = useState('places'); // 'places' | 'reviews'
+  const [activeTab, setActiveTab] = useState('places'); // 'places' | 'reviews' | 'blog' | 'newsletter'
   const [pendingPlacesList, setPendingPlacesList] = useState([]);
   const [allPlacesList, setAllPlacesList] = useState([]);
   const [reviewsList, setReviewsList] = useState([]);
+  const [blogPosts, setBlogPosts] = useState([]);
+  const [subscribers, setSubscribers] = useState([]);
   const [_loading, setLoading] = useState(true);
   const [actionMsg, setActionMsg] = useState(null);
 
-
-
+  // Blog editor state
+  const [showPostForm, setShowPostForm] = useState(false);
+  const [editingPostId, setEditingPostId] = useState(null);
+  const [postForm, setPostForm] = useState(EMPTY_POST);
+  const [postSaving, setPostSaving] = useState(false);
 
   useEffect(() => {
     fetchAdminData();
   }, []);
 
+  const notify = (msg) => {
+    setActionMsg(msg);
+    setTimeout(() => setActionMsg(null), 3000);
+  };
+
   const fetchAdminData = async () => {
     setLoading(true);
     try {
-      // Stats
       const statsRes = await fetch('/api/admin/stats');
       if (statsRes.ok) {
         const statsData = await statsRes.json();
         setStats(statsData.stats || stats);
       }
 
-      // Fetch pending & all places
       const placesRes = await fetch('/api/places?status=PENDING');
       if (placesRes.ok) {
         const pData = await placesRes.json();
@@ -47,11 +61,22 @@ export default function AdminDashboardPage() {
         setAllPlacesList(allData.places || []);
       }
 
-      // Fetch reviews
       const revRes = await fetch('/api/reviews?admin=true');
       if (revRes.ok) {
         const rData = await revRes.json();
         setReviewsList(rData.reviews || []);
+      }
+
+      const blogRes = await fetch('/api/blog?admin=true');
+      if (blogRes.ok) {
+        const bData = await blogRes.json();
+        setBlogPosts(bData.posts || []);
+      }
+
+      const newsRes = await fetch('/api/newsletter');
+      if (newsRes.ok) {
+        const nData = await newsRes.json();
+        setSubscribers(nData.subscribers || []);
       }
     } catch (err) {
       console.error('Fetch admin data error:', err);
@@ -68,9 +93,8 @@ export default function AdminDashboardPage() {
         body: JSON.stringify({ id: placeId, status })
       });
       if (res.ok) {
-        setActionMsg(`Place status updated to ${status}!`);
+        notify(`Place status updated to ${status}!`);
         fetchAdminData();
-        setTimeout(() => setActionMsg(null), 3000);
       }
     } catch (err) {
       console.error('Update place status error:', err);
@@ -82,9 +106,8 @@ export default function AdminDashboardPage() {
     try {
       const res = await fetch(`/api/places?id=${placeId}`, { method: 'DELETE' });
       if (res.ok) {
-        setActionMsg('Place deleted.');
+        notify('Place deleted.');
         fetchAdminData();
-        setTimeout(() => setActionMsg(null), 3000);
       }
     } catch (err) {
       console.error('Delete place error:', err);
@@ -99,9 +122,8 @@ export default function AdminDashboardPage() {
         body: JSON.stringify({ id: reviewId, status })
       });
       if (res.ok) {
-        setActionMsg(`Review ${status.toLowerCase()}!`);
+        notify(`Review ${status.toLowerCase()}!`);
         fetchAdminData();
-        setTimeout(() => setActionMsg(null), 3000);
       }
     } catch (err) {
       console.error('Update review error:', err);
@@ -112,14 +134,93 @@ export default function AdminDashboardPage() {
     try {
       const res = await fetch(`/api/reviews?id=${reviewId}`, { method: 'DELETE' });
       if (res.ok) {
-        setActionMsg('Review deleted.');
+        notify('Review deleted.');
         fetchAdminData();
-        setTimeout(() => setActionMsg(null), 3000);
       }
     } catch (err) {
       console.error('Delete review error:', err);
     }
   };
+
+  // ---- Blog CMS actions ----
+  const startNewPost = () => {
+    setEditingPostId(null);
+    setPostForm(EMPTY_POST);
+    setShowPostForm(true);
+  };
+
+  const startEditPost = (post) => {
+    setEditingPostId(post._id);
+    setPostForm({
+      title: post.title || '',
+      category: post.category || 'Journal',
+      excerpt: post.excerpt || '',
+      content: post.content || '',
+      image: post.image || '',
+      published: post.published !== false
+    });
+    setShowPostForm(true);
+  };
+
+  const handleSavePost = async (e) => {
+    e.preventDefault();
+    setPostSaving(true);
+    try {
+      const token = localStorage.getItem('horizon_token');
+      const headers = {
+        'Content-Type': 'application/json',
+        ...(token ? { Authorization: `Bearer ${token}` } : {})
+      };
+      const url = editingPostId ? '/api/blog' : '/api/blog';
+      const method = editingPostId ? 'PATCH' : 'POST';
+      const body = editingPostId ? { id: editingPostId, ...postForm } : postForm;
+
+      const res = await fetch(url, { method, headers, body: JSON.stringify(body) });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Could not save article.');
+
+      notify(editingPostId ? 'Article updated.' : 'Article published!');
+      setShowPostForm(false);
+      setPostForm(EMPTY_POST);
+      setEditingPostId(null);
+      fetchAdminData();
+    } catch (err) {
+      console.error('Save post error:', err);
+      notify('Could not save article.');
+    } finally {
+      setPostSaving(false);
+    }
+  };
+
+  const handleDeletePost = async (postId) => {
+    if (!window.confirm('Delete this article permanently?')) return;
+    try {
+      const token = localStorage.getItem('horizon_token');
+      const res = await fetch(`/api/blog?id=${postId}`, {
+        method: 'DELETE',
+        headers: token ? { Authorization: `Bearer ${token}` } : {}
+      });
+      if (res.ok) {
+        notify('Article deleted.');
+        fetchAdminData();
+      }
+    } catch (err) {
+      console.error('Delete post error:', err);
+    }
+  };
+
+  const statCards = [
+    { label: 'Total Places', val: stats.totalPlaces, icon: '🏝️' },
+    { label: 'Pending Places', val: stats.pendingPlaces, icon: '⏳', highlight: stats.pendingPlaces > 0 },
+    { label: 'Approved Places', val: stats.approvedPlaces, icon: '✓' },
+    { label: 'Total Reviews', val: stats.totalReviews, icon: '✍️' },
+    { label: 'Pending Reviews', val: stats.pendingReviews, icon: '🔎' },
+    { label: 'Avg Rating', val: `★ ${stats.averageRating}`, icon: '⭐' },
+    { label: 'Users', val: stats.totalUsers, icon: '👤' },
+    { label: 'Newsletter', val: stats.totalNewsletterSubscribers, icon: '✉️' },
+    { label: 'Blog Posts', val: stats.totalBlogPosts, icon: '📰' },
+    { label: 'Trips Saved', val: stats.totalTrips, icon: '🧳' }
+  ];
 
   return (
     <section className="min-h-screen w-full bg-[#0c0c0c] pt-32 pb-24 px-4 sm:px-8">
@@ -143,15 +244,8 @@ export default function AdminDashboardPage() {
         )}
 
         {/* Live DB Statistics Cards */}
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4">
-          {[
-            { label: 'Total Places', val: stats.totalPlaces, icon: '🏝️' },
-            { label: 'Pending Places', val: stats.pendingPlaces, icon: '⏳', highlight: stats.pendingPlaces > 0 },
-            { label: 'Approved Places', val: stats.approvedPlaces, icon: '✓' },
-            { label: 'Total Reviews', val: stats.totalReviews, icon: '✍️' },
-            { label: 'Pending Reviews', val: stats.pendingReviews, icon: '🔎' },
-            { label: 'Avg Rating', val: `★ ${stats.averageRating}`, icon: '⭐' }
-          ].map((s, idx) => (
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
+          {statCards.map((s, idx) => (
             <div
               key={idx}
               className={`p-5 rounded-2xl border ${
@@ -168,7 +262,7 @@ export default function AdminDashboardPage() {
         </div>
 
         {/* Tabs Navigation */}
-        <div className="flex gap-4 border-b border-white/10 pb-4">
+        <div className="flex flex-wrap gap-4 border-b border-white/10 pb-4">
           <button
             onClick={() => setActiveTab('places')}
             className={`px-6 py-2.5 rounded-full text-xs font-bold uppercase tracking-wider transition-all ${
@@ -177,7 +271,7 @@ export default function AdminDashboardPage() {
                 : 'bg-white/5 text-white/70 hover:bg-white/10'
             }`}
           >
-            Place Submissions ({pendingPlacesList.length} Pending)
+            Places ({pendingPlacesList.length} Pending)
           </button>
           <button
             onClick={() => setActiveTab('reviews')}
@@ -187,7 +281,27 @@ export default function AdminDashboardPage() {
                 : 'bg-white/5 text-white/70 hover:bg-white/10'
             }`}
           >
-            User Reviews ({reviewsList.length})
+            Reviews ({reviewsList.length})
+          </button>
+          <button
+            onClick={() => setActiveTab('blog')}
+            className={`px-6 py-2.5 rounded-full text-xs font-bold uppercase tracking-wider transition-all ${
+              activeTab === 'blog'
+                ? 'bg-brand-gold text-black shadow-lg shadow-brand-gold/20'
+                : 'bg-white/5 text-white/70 hover:bg-white/10'
+            }`}
+          >
+            Blog CMS ({blogPosts.length})
+          </button>
+          <button
+            onClick={() => setActiveTab('newsletter')}
+            className={`px-6 py-2.5 rounded-full text-xs font-bold uppercase tracking-wider transition-all ${
+              activeTab === 'newsletter'
+                ? 'bg-brand-gold text-black shadow-lg shadow-brand-gold/20'
+                : 'bg-white/5 text-white/70 hover:bg-white/10'
+            }`}
+          >
+            Newsletter ({subscribers.length})
           </button>
         </div>
 
@@ -252,7 +366,6 @@ export default function AdminDashboardPage() {
               </div>
             )}
 
-            {/* All Approved Places */}
             <div className="pt-8 space-y-4">
               <h3 className="font-serif text-2xl text-white">All Public & Approved Places ({allPlacesList.length})</h3>
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -275,7 +388,7 @@ export default function AdminDashboardPage() {
         {activeTab === 'reviews' && (
           <div className="space-y-6">
             <h3 className="font-serif text-2xl text-white">All User Reviews ({reviewsList.length})</h3>
-            
+
             {reviewsList.length === 0 ? (
               <div className="p-10 rounded-3xl bg-[#121214] border border-white/10 text-center text-white/50">
                 No reviews found.
@@ -311,6 +424,196 @@ export default function AdminDashboardPage() {
                     </div>
                   </div>
                 ))}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* BLOG CMS TAB */}
+        {activeTab === 'blog' && (
+          <div className="space-y-6">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <div>
+                <h3 className="font-serif text-2xl text-white">Journal Articles ({blogPosts.length})</h3>
+                <p className="text-white/50 text-xs mt-1">Create, edit, and publish stories for The Journal.</p>
+              </div>
+              <button
+                onClick={startNewPost}
+                className="px-6 py-2.5 rounded-full bg-brand-gold text-black text-xs font-bold uppercase tracking-widest hover:bg-white transition-colors"
+              >
+                + New Article
+              </button>
+            </div>
+
+            {/* Create / Edit form */}
+            {showPostForm && (
+              <form onSubmit={handleSavePost} className="p-6 sm:p-8 rounded-3xl bg-[#121214] border border-brand-gold/30 space-y-5">
+                <h4 className="font-serif text-xl text-white">{editingPostId ? '✏️ Edit Article' : '✍️ New Article'}</h4>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                  <div className="space-y-1.5 md:col-span-2">
+                    <label className="text-xs uppercase font-mono text-white/60">Title *</label>
+                    <input
+                      type="text"
+                      required
+                      value={postForm.title}
+                      onChange={(e) => setPostForm({ ...postForm, title: e.target.value })}
+                      placeholder="The Ultimate Guide to..."
+                      className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-white text-sm focus:border-brand-gold focus:outline-none"
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <label className="text-xs uppercase font-mono text-white/60">Category</label>
+                    <input
+                      type="text"
+                      value={postForm.category}
+                      onChange={(e) => setPostForm({ ...postForm, category: e.target.value })}
+                      className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-white text-sm focus:border-brand-gold focus:outline-none"
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <label className="text-xs uppercase font-mono text-white/60">Cover Image URL</label>
+                    <input
+                      type="url"
+                      value={postForm.image}
+                      onChange={(e) => setPostForm({ ...postForm, image: e.target.value })}
+                      placeholder="/images/private_jet.png or https://..."
+                      className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-white text-sm focus:border-brand-gold focus:outline-none"
+                    />
+                  </div>
+                  <div className="space-y-1.5 md:col-span-2">
+                    <label className="text-xs uppercase font-mono text-white/60">Excerpt</label>
+                    <input
+                      type="text"
+                      value={postForm.excerpt}
+                      onChange={(e) => setPostForm({ ...postForm, excerpt: e.target.value })}
+                      placeholder="Short summary shown on the journal grid"
+                      className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-white text-sm focus:border-brand-gold focus:outline-none"
+                    />
+                  </div>
+                  <div className="space-y-1.5 md:col-span-2">
+                    <label className="text-xs uppercase font-mono text-white/60">Content *</label>
+                    <textarea
+                      rows="8"
+                      required
+                      value={postForm.content}
+                      onChange={(e) => setPostForm({ ...postForm, content: e.target.value })}
+                      placeholder="Write the full story... (separate paragraphs with blank lines)"
+                      className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-white text-sm focus:border-brand-gold focus:outline-none"
+                    />
+                  </div>
+                </div>
+
+                <label className="flex items-center gap-3 text-xs font-mono text-white/70 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={postForm.published}
+                    onChange={(e) => setPostForm({ ...postForm, published: e.target.checked })}
+                    className="accent-brand-gold w-4 h-4"
+                  />
+                  Published (visible on The Journal)
+                </label>
+
+                <div className="flex flex-wrap justify-end gap-3 pt-2">
+                  <button
+                    type="button"
+                    onClick={() => setShowPostForm(false)}
+                    className="px-6 py-2.5 rounded-full bg-white/10 text-white text-xs font-mono hover:bg-white/20 transition-colors"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={postSaving}
+                    className="px-8 py-2.5 rounded-full bg-brand-gold text-black text-xs font-bold uppercase tracking-widest hover:bg-white transition-colors disabled:opacity-50"
+                  >
+                    {postSaving ? 'Saving...' : editingPostId ? 'Save Changes' : 'Publish Article'}
+                  </button>
+                </div>
+              </form>
+            )}
+
+            {/* Posts list */}
+            {blogPosts.length === 0 ? (
+              <div className="p-10 rounded-3xl bg-[#121214] border border-white/10 text-center text-white/50">
+                No articles yet. Write your first story!
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {blogPosts.map((post) => (
+                  <div key={post._id} className="p-5 rounded-2xl bg-[#121214] border border-white/10 flex flex-col md:flex-row justify-between gap-4">
+                    <div className="flex gap-4 items-start flex-1 min-w-0">
+                      <img src={post.image} alt={post.title} className="w-16 h-16 rounded-xl object-cover shrink-0" />
+                      <div className="space-y-1 min-w-0">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="text-[10px] font-mono text-white/40">
+                            {post.created_at ? new Date(post.created_at).toLocaleDateString() : ''}
+                          </span>
+                          <span className={`text-[9px] font-mono px-2 py-0.5 rounded-full uppercase ${
+                            post.published !== false
+                              ? 'bg-green-500/15 text-green-300'
+                              : 'bg-yellow-500/15 text-yellow-300'
+                          }`}>
+                            {post.published !== false ? 'Published' : 'Draft'}
+                          </span>
+                        </div>
+                        <h5 className="font-serif text-lg text-white truncate">{post.title}</h5>
+                        <p className="text-white/50 text-xs line-clamp-1">{post.excerpt || post.content}</p>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-2 shrink-0">
+                      <button
+                        onClick={() => startEditPost(post)}
+                        className="px-4 py-2 rounded-lg bg-white/10 text-white text-xs font-mono hover:bg-white hover:text-black transition-colors"
+                      >
+                        ✏️ Edit
+                      </button>
+                      <button
+                        onClick={() => handleDeletePost(post._id)}
+                        className="px-4 py-2 rounded-lg bg-red-500/20 text-red-300 text-xs font-mono hover:bg-red-500 hover:text-white transition-colors"
+                      >
+                        Delete
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* NEWSLETTER TAB */}
+        {activeTab === 'newsletter' && (
+          <div className="space-y-6">
+            <h3 className="font-serif text-2xl text-white">Newsletter Subscribers ({subscribers.length})</h3>
+
+            {subscribers.length === 0 ? (
+              <div className="p-10 rounded-3xl bg-[#121214] border border-white/10 text-center text-white/50">
+                No subscribers yet. The footer signup will grow this list.
+              </div>
+            ) : (
+              <div className="bg-[#121214] border border-white/10 rounded-3xl overflow-hidden">
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left text-sm">
+                    <thead>
+                      <tr className="border-b border-white/10 text-[10px] font-mono text-white/40 uppercase tracking-widest">
+                        <th className="px-6 py-4">Email</th>
+                        <th className="px-6 py-4">Subscribed</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {subscribers.map((sub) => (
+                        <tr key={sub._id} className="border-b border-white/5 last:border-0">
+                          <td className="px-6 py-3.5 text-white font-mono text-xs">{sub.email}</td>
+                          <td className="px-6 py-3.5 text-white/50 text-xs font-mono">
+                            {sub.createdAt ? new Date(sub.createdAt).toLocaleDateString() : '—'}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
               </div>
             )}
           </div>

@@ -120,14 +120,8 @@ export default function Header() {
                         </Link>
                     )}
 
-                    <button
-                        onClick={() => setShowReserve(true)}
-                        className="bg-brand-gold text-black px-4 sm:px-5 py-1.5 rounded-full font-sans text-xs font-bold whitespace-nowrap hover:scale-105 transition-transform hover:bg-white"
-                    >
-                        Reserve
-                    </button>
-
                     {/* Mobile Hamburger */}
+
                     <button
                         onClick={() => setMenuOpen(true)}
                         className="lg:hidden w-9 h-9 rounded-full bg-white/10 backdrop-blur-md border border-white/10 flex items-center justify-center text-white hover:bg-white/20 transition-colors"

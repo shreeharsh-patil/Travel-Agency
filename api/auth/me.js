@@ -31,7 +31,16 @@ export default async function handler(req, res) {
     }
 
     return res.status(200).json({
-      user: { id: user._id.toString(), email: user.email, createdAt: user.createdAt },
+      user: {
+        id: user._id.toString(),
+        email: user.email,
+        name: user.name || '',
+        phone: user.phone || '',
+        avatar: user.avatar || '',
+        preferences: user.preferences || {},
+        role: user.role || 'user',
+        createdAt: user.createdAt,
+      },
     });
   } catch (err) {
     if (err.name === 'JsonWebTokenError' || err.name === 'TokenExpiredError') {

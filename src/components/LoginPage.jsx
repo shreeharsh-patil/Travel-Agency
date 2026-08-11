@@ -140,7 +140,7 @@ export default function LoginPage() {
                 </div>
 
                 {/* Right: Form */}
-                <div className="flex items-center justify-center px-6 py-20 lg:py-0">
+                <div className="flex items-start justify-center px-6 pt-32 pb-20">
                     <motion.div
                         initial={{ opacity: 0, y: 20 }}
                         animate={{ opacity: 1, y: 0 }}
@@ -166,7 +166,7 @@ export default function LoginPage() {
                                     value={formData.email}
                                     onChange={handleChange}
                                     placeholder="john@example.com"
-                                    className="w-full bg-transparent border-b border-white/20 py-3 text-white placeholder-white/30 focus:outline-none focus:border-brand-gold transition-colors"
+                                    className="w-full bg-white/5 border border-white/15 rounded-xl px-4 py-3.5 text-white placeholder-white/35 focus:outline-none focus:border-brand-gold focus:bg-white/10 focus:ring-2 focus:ring-brand-gold/20 transition-all"
                                 />
                             </div>
 
@@ -179,12 +179,12 @@ export default function LoginPage() {
                                         value={formData.password}
                                         onChange={handleChange}
                                         placeholder="••••••••"
-                                        className="w-full bg-transparent border-b border-white/20 py-3 pr-10 text-white placeholder-white/30 focus:outline-none focus:border-brand-gold transition-colors"
+                                        className="w-full bg-white/5 border border-white/15 rounded-xl px-4 py-3.5 pr-12 text-white placeholder-white/35 focus:outline-none focus:border-brand-gold focus:bg-white/10 focus:ring-2 focus:ring-brand-gold/20 transition-all"
                                     />
                                     <button
                                         type="button"
                                         onClick={() => setShowPassword(s => !s)}
-                                        className="absolute right-0 top-1/2 -translate-y-1/2 text-white/40 hover:text-white transition-colors"
+                                        className="absolute right-4 top-1/2 -translate-y-1/2 text-white/40 hover:text-white transition-colors"
                                         aria-label={showPassword ? 'Hide password' : 'Show password'}
                                     >
                                         {showPassword ? (

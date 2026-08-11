@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import ReservationForm from './ReservationForm';
+import PlaceMap from './PlaceMap';
 import { formatINR } from '../utils/currency';
 
 export default function PlaceDetailPage() {
@@ -29,6 +30,7 @@ export default function PlaceDetailPage() {
 
   const [weatherData, setWeatherData] = useState(null);
   const [freeAttractions, setFreeAttractions] = useState([]);
+  const [sunTimesData, setSunTimesData] = useState(null);
 
   const fetchPlaceAndReviews = async () => {
     setLoading(true);
@@ -48,6 +50,23 @@ export default function PlaceDetailPage() {
       }
 
       // Fetch live free weather
+      fetch(`/api/weather?city=${data.place.name || slug}`)
+        .then(r => r.json())
+        .then(w => setWeatherData(w))
+        .catch(() => {});
+
+      // Fetch solar photography times
+      fetch(`/api/sun-times`)
+        .then(r => r.json())
+        .then(s => setSunTimesData(s))
+        .catch(() => {});
+
+      // Fetch free attractions
+      fetch(`/api/free-attractions?destination=${data.place.name || slug}`)
+        .then(r => r.json())
+        .then(fa => setFreeAttractions(fa.attractions || []))
+        .catch(() => {});
+
       const weatherRes = await fetch(`/api/weather?city=${slug}`);
       if (weatherRes.ok) {
         const wData = await weatherRes.json();
@@ -291,14 +310,40 @@ export default function PlaceDetailPage() {
               </div>
             )}
 
+            {/* Interactive Map */}
+            <div className="bg-[#121214] border border-white/10 rounded-3xl p-6 sm:p-8 space-y-5">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-white/10 pb-4">
+                <div>
+                  <span className="text-[10px] font-mono text-brand-gold uppercase tracking-widest block">
+                    🗺️ Interactive Map
+                  </span>
+                  <h3 className="font-serif text-2xl text-white mt-0.5">
+                    Find {place.name || place.title} on the Map
+                  </h3>
+                </div>
+                {place.google_maps_url && (
+                  <a
+                    href={place.google_maps_url}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="px-5 py-2.5 rounded-full bg-white/10 text-white text-xs font-mono hover:bg-white hover:text-black transition-colors text-center"
+                  >
+                    Open in Google Maps ↗
+                  </a>
+                )}
+              </div>
+              <PlaceMap place={place} />
+            </div>
+
             {/* Live Free Weather Widget (Open-Meteo API) */}
             {weatherData && (
               <div className="bg-[#141418] border border-brand-gold/30 rounded-3xl p-6 space-y-4 shadow-xl">
                 <div className="flex justify-between items-center border-b border-white/10 pb-4">
                   <div>
                     <span className="text-[10px] font-mono text-brand-gold uppercase tracking-widest block">
-                      ⚡ Live Weather (Free Open-Meteo API)
+                      ⚡ Live Weather Forecast
                     </span>
+
                     <h4 className="font-serif text-2xl text-white mt-0.5">
                       {weatherData.city} • {weatherData.temperature}
                     </h4>
@@ -319,6 +364,33 @@ export default function PlaceDetailPage() {
                 </div>
               </div>
             )}
+
+            {/* Solar & Golden Hour Photography Widget */}
+            {sunTimesData && (
+              <div className="bg-[#121214] border border-white/10 rounded-3xl p-6 space-y-4 shadow-xl">
+                <div className="flex justify-between items-center border-b border-white/10 pb-3">
+                  <span className="text-xs font-mono text-brand-gold uppercase tracking-widest">
+                    🌅 Solar & Golden Hour Times
+                  </span>
+                  <span className="text-[10px] font-mono text-white/40">Photography Guide</span>
+                </div>
+                <div className="grid grid-cols-3 gap-3 text-center text-xs font-mono">
+                  <div className="p-3 rounded-2xl bg-white/5 border border-white/10">
+                    <span className="text-white/40 block text-[10px] uppercase">Sunrise</span>
+                    <span className="text-brand-gold font-bold">{sunTimesData.sunrise}</span>
+                  </div>
+                  <div className="p-3 rounded-2xl bg-brand-gold/10 border border-brand-gold/30">
+                    <span className="text-brand-gold block text-[10px] uppercase font-bold">Golden Hour</span>
+                    <span className="text-white font-bold">{sunTimesData.goldenHour}</span>
+                  </div>
+                  <div className="p-3 rounded-2xl bg-white/5 border border-white/10">
+                    <span className="text-white/40 block text-[10px] uppercase">Sunset</span>
+                    <span className="text-brand-gold font-bold">{sunTimesData.sunset}</span>
+                  </div>
+                </div>
+              </div>
+            )}
+
 
             {/* Free Places to Visit (₹0 Entry) */}
             {freeAttractions.length > 0 && (

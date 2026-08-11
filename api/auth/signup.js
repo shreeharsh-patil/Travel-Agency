@@ -6,7 +6,7 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  const { email, password } = req.body || {};
+  const { email, password, name } = req.body || {};
 
   if (!email || !password) {
     return res.status(400).json({ error: 'Email and password are required.' });
@@ -28,15 +28,26 @@ export default async function handler(req, res) {
     const hashed = await hashPassword(password);
     const result = await users.insertOne({
       email: normalizedEmail,
-      password: hashed,
+      passwordHash: hashed,
+      name: String(name || '').trim().slice(0, 80),
+      phone: '',
+      avatar: '',
+      preferences: {},
+      role: 'user',
       createdAt: new Date(),
     });
+
 
     const token = signToken({ _id: result.insertedId, email: normalizedEmail });
 
     return res.status(201).json({
       token,
-      user: { id: result.insertedId.toString(), email: normalizedEmail },
+      user: {
+        id: result.insertedId.toString(),
+        email: normalizedEmail,
+        name: String(name || '').trim().slice(0, 80),
+        role: 'user',
+      },
     });
   } catch (err) {
     console.error('[signup]', err);

@@ -1,0 +1,21 @@
+{
+  "name": "Horizon Travels — Luxury Travel Agency",
+  "short_name": "Horizon",
+  "description": "Private jets, exclusive villas, curated experiences, and a 24/7 global concierge.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#0c0c0c",
+  "theme_color": "#0c0c0c",
+  "lang": "en",
+  "categories": ["travel", "lifestyle", "shopping"],
+  "icons": [
+    {
+      "src": "/vite.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ]
+}
