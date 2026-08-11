@@ -20,9 +20,9 @@ export default function Footer() {
                     <div>
                         <h4 className="font-sans font-bold text-[10px] tracking-[0.2em] text-white/40 mb-8 uppercase">Get in Touch</h4>
                         <ul className="space-y-4 font-sans text-sm text-white/80">
-                            <li className="hover:text-white cursor-pointer">Contact</li>
-                            <li className="hover:text-white cursor-pointer">Careers</li>
-                            <li className="hover:text-white cursor-pointer">Press</li>
+                            <li><Link to="/contact" className="hover:text-white cursor-pointer transition-colors">Contact</Link></li>
+                            <li><Link to="/careers" className="hover:text-white cursor-pointer transition-colors">Careers</Link></li>
+                            <li><Link to="/press" className="hover:text-white cursor-pointer transition-colors">Press</Link></li>
                         </ul>
                     </div>
 
@@ -30,9 +30,9 @@ export default function Footer() {
                     <div>
                         <h4 className="font-sans font-bold text-[10px] tracking-[0.2em] text-white/40 mb-8 uppercase">Connect</h4>
                         <ul className="space-y-4 font-sans text-sm text-white/80">
-                            <li className="hover:text-white cursor-pointer">Instagram</li>
-                            <li className="hover:text-white cursor-pointer">LinkedIn</li>
-                            <li className="hover:text-white cursor-pointer">Twitter</li>
+                            <li><a href="https://instagram.com" target="_blank" rel="noreferrer" className="hover:text-white cursor-pointer transition-colors">Instagram</a></li>
+                            <li><a href="https://linkedin.com" target="_blank" rel="noreferrer" className="hover:text-white cursor-pointer transition-colors">LinkedIn</a></li>
+                            <li><a href="https://twitter.com" target="_blank" rel="noreferrer" className="hover:text-white cursor-pointer transition-colors">Twitter</a></li>
                         </ul>
                     </div>
 

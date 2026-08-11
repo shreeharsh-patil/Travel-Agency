@@ -20,7 +20,7 @@ export default function ReservationForm({ destination, onClose }) {
                 initial={{ scale: 0.9, y: 20 }}
                 animate={{ scale: 1, y: 0 }}
                 exit={{ scale: 0.9, y: 20 }}
-                className="relative w-full max-w-lg bg-[#111] border border-white/10 rounded-3xl overflow-hidden shadow-2xl"
+                className="relative w-full max-w-lg bg-[#111] border border-white/10 rounded-3xl shadow-2xl max-h-[92vh] overflow-y-auto"
             >
                 {/* Header Image */}
                 <div className="h-40 w-full relative">
@@ -43,8 +43,8 @@ export default function ReservationForm({ destination, onClose }) {
                 </div>
 
                 {/* Form Fields */}
-                <div className="p-8 space-y-6">
-                    <div className="grid grid-cols-2 gap-4">
+                <div className="p-6 sm:p-8 space-y-6">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <div className="space-y-2">
                             <label className="text-xs uppercase tracking-widest text-white/60">First Name</label>
                             <input type="text" className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-3 text-white focus:outline-none focus:border-brand-gold transition-colors" placeholder="John" />
@@ -60,7 +60,7 @@ export default function ReservationForm({ destination, onClose }) {
                         <input type="email" className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-3 text-white focus:outline-none focus:border-brand-gold transition-colors" placeholder="john@example.com" />
                     </div>
 
-                    <div className="grid grid-cols-2 gap-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <div className="space-y-2">
                             <label className="text-xs uppercase tracking-widest text-white/60">Guests</label>
                             <select className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-3 text-white focus:outline-none focus:border-brand-gold transition-colors">

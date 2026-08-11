@@ -11,6 +11,7 @@ import ServicePage from './components/ServicePage';
 import HomePage from './components/HomePage';
 import GalleryPage from './components/GalleryPage'; // Added GalleryPage import
 import ContactPage from './components/ContactPage'; // Added ContactPage import
+import LoginPage from './components/LoginPage'; // Added LoginPage import
 import JournalPage from './components/JournalPage'; // Added JournalPage import
 
 function ScrollToTop() {
@@ -99,6 +100,9 @@ function App() {
               />
             } />
             <Route path="/contact" element={<ContactPage />} /> {/* Changed to ContactPage */}
+            <Route path="/login" element={<LoginPage />} /> {/* Added LoginPage route */}
+            <Route path="/careers" element={<GenericPage title="Careers" subtitle="Join Our Team" image="/images/amalfi_scenic.png" />} />
+            <Route path="/press" element={<GenericPage title="Press" subtitle="News & Media" image="/images/swiss_alps.png" />} />
             <Route path="/support" element={<GenericPage title="Support" subtitle="We're Here to Help" image="/images/amalfi_scenic.png" />} />
           </Routes>
 

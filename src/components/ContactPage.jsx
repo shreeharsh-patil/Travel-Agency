@@ -25,7 +25,7 @@ export default function ContactPage() {
             {/* Background Ambient */}
             <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-brand-gold/5 rounded-full blur-[120px] pointer-events-none" />
 
-            <div className="max-w-7xl mx-auto px-6 grid grid-cols-1 lg:grid-cols-2 gap-20">
+            <div className="max-w-7xl mx-auto px-6 grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-20">
 
                 {/* Left: Info */}
                 <div className="mt-10">
@@ -37,7 +37,7 @@ export default function ContactPage() {
                         <p className="font-sans text-brand-gold text-sm tracking-[0.3em] uppercase mb-6">
                             Contact Us
                         </p>
-                        <h1 className="font-serif text-6xl md:text-8xl mb-8 leading-tight">
+                        <h1 className="font-serif text-5xl md:text-8xl mb-8 leading-tight">
                             Let's start the <br /> conversation.
                         </h1>
                         <p className="font-sans text-white/60 text-lg leading-relaxed max-w-md mb-12">

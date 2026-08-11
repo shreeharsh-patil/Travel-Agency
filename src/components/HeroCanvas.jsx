@@ -1,7 +1,6 @@
 import { useEffect, useRef } from 'react';
 import gsap from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
-import { Link } from 'react-router-dom';
 import { useCanvasVideo } from '../hooks/useCanvasVideo';
 
 gsap.registerPlugin(ScrollTrigger);
@@ -118,11 +117,6 @@ export default function HeroCanvas({ scrollTrackRef }) {
                         <h1 ref={textRef2} className="font-serif text-[clamp(3rem,6vw,5rem)] text-white leading-none opacity-0 drop-shadow-2xl text-left">
                             We have<br />financing<br />plans.
                         </h1>
-                        <Link to="/contact">
-                            <button className="mt-6 px-8 py-3 bg-white/10 backdrop-blur-md border border-white/20 rounded-full text-white font-sans tracking-widest uppercase text-xs hover:bg-white/20 transition-all duration-300 shadow-lg hover:scale-105 hover:shadow-brand-gold/20 pointer-events-auto">
-                                Contact Us
-                            </button>
-                        </Link>
                     </div>
                 </div>
 

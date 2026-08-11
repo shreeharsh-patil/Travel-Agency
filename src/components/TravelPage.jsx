@@ -29,7 +29,7 @@ export default function TravelPage() {
                             initial={{ opacity: 0, scale: 0.95 }}
                             animate={{ opacity: 1, scale: 1 }}
                             transition={{ duration: 0.5, delay: idx * 0.1 }}
-                            className="group relative h-[500px] rounded-[40px] overflow-hidden cursor-pointer border border-white/5 hover:border-brand-gold/30 transition-colors"
+                            className="group relative h-[440px] sm:h-[500px] rounded-[40px] overflow-hidden cursor-pointer border border-white/5 hover:border-brand-gold/30 transition-colors"
                             onDoubleClick={() => setSelectedDestination(dest)}
                         >
                             <img

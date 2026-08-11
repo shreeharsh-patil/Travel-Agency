@@ -32,11 +32,11 @@ export default function PricingSection() {
                     Discover our collection of award-winning private residences, designed for the ultimate escape.
                 </p>
 
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-8 min-h-[80vh]">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-8 md:min-h-[80vh]">
                     {cards.map((card, idx) => (
                         <div
                             key={idx}
-                            className={`group relative rounded-[40px] overflow-hidden transition-all duration-700 hover:scale-[1.02] cursor-pointer shadow-2xl
+                            className={`group relative h-[520px] md:h-auto rounded-[40px] overflow-hidden transition-all duration-700 hover:scale-[1.02] cursor-pointer shadow-2xl
                                 ${card.dark ? 'bg-[#1a1a1a]' : 'bg-white'}
                                 ${card.accent ? 'border border-brand-gold/30' : ''}
                             `}

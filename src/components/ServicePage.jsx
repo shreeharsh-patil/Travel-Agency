@@ -59,7 +59,7 @@ export default function ServicePage({ title, subtitle, heroImage, description, f
                             {description}
                         </p>
                     </div>
-                    <div className="grid grid-cols-2 gap-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         {features.map((feature, idx) => (
                             <div key={idx} className="p-6 bg-white/5 border border-white/10 rounded-2xl backdrop-blur-sm hover:bg-white/10 transition-colors">
                                 <h3 className="font-serif text-xl mb-2 text-white">{feature.title}</h3>
