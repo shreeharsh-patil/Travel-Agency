@@ -136,6 +136,8 @@ export default function TravelPage() {
                                 <img
                                     src={dest.image || '/images/tropical_beach.png'}
                                     alt={dest.name || dest.title}
+                                    loading="lazy"
+                                    decoding="async"
                                     className="absolute inset-0 w-full h-full object-cover transition-transform duration-1000 group-hover:scale-105"
                                 />
                                 <div className="absolute inset-0 bg-gradient-to-t from-black via-black/40 to-transparent opacity-85 group-hover:opacity-90 transition-opacity" />

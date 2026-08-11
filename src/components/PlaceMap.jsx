@@ -1,123 +1,73 @@
-import React, { useEffect, useRef, useState } from 'react';
-import L from 'leaflet';
-import 'leaflet/dist/leaflet.css';
+import React, { useMemo } from 'react';
 
 /**
- * Interactive destination map (Leaflet + OpenStreetMap, no API key required).
- * Uses the place's lat/lon when available, otherwise geocodes via the
- * free OpenStreetMap Nominatim endpoint through the /api/external-places route.
+ * Real Google Maps embed for a destination (no API key required).
+ * Uses the place's stored google_maps_url when available, otherwise
+ * builds a search query from the place name / city / country.
  */
-export default function PlaceMap({ place }) {
-  const mapContainerRef = useRef(null);
-  const mapRef = useRef(null);
-  const [coords, setCoords] = useState(null);
-  const [geocoding, setGeocoding] = useState(false);
-  const [error, setError] = useState(null);
 
-  useEffect(() => {
-    let cancelled = false;
+function buildMapsQuery(place) {
+  if (!place) return '';
 
-    const lookupCoordinates = async () => {
-      const lat = parseFloat(place?.lat ?? place?.latitude);
-      const lon = parseFloat(place?.lon ?? place?.longitude);
-      if (Number.isFinite(lat) && Number.isFinite(lon)) {
-        setCoords({ lat, lon });
-        return;
-      }
-
-      if (Array.isArray(place?.coordinates) && place.coordinates.length === 2) {
-        const [cLat, cLon] = place.coordinates;
-        if (Number.isFinite(Number(cLat)) && Number.isFinite(Number(cLon))) {
-          setCoords({ lat: Number(cLat), lon: Number(cLon) });
-          return;
-        }
-      }
-
-      // Geocode fallback via Nominatim.
-      setGeocoding(true);
-      setError(null);
+  const stored = place.google_maps_url;
+  if (typeof stored === 'string' && stored.trim()) {
+    // Reuse the q= parameter from a stored maps.google.com URL.
+    if (stored.includes('q=')) {
       try {
-        const query = place?.name || place?.city || place?.title || '';
-        if (!query) {
-          setError('Location unavailable for this destination.');
-          return;
-        }
-        const res = await fetch(`/api/external-places?q=${encodeURIComponent(query)}`);
-        const data = await res.json();
-        const first = data?.places?.[0];
-        if (!cancelled && first?.coordinates?.lat && first?.coordinates?.lon) {
-          setCoords({ lat: parseFloat(first.coordinates.lat), lon: parseFloat(first.coordinates.lon) });
-        } else if (!cancelled) {
-          setError('Could not locate this destination on the map.');
-        }
+        const url = new URL(stored);
+        const q = url.searchParams.get('q');
+        if (q && q.trim()) return q.trim();
       } catch {
-
-
-        if (!cancelled) setError('Map is temporarily unavailable.');
-      } finally {
-        if (!cancelled) setGeocoding(false);
+        // fall through to generic URL handling below
       }
-    };
+    }
+    if (stored.startsWith('http')) {
+      return stored;
+    }
+  }
 
-    lookupCoordinates();
-    return () => {
-      cancelled = true;
+  const parts = [
+    place.name || place.title,
+    place.city,
+    place.state_region,
+    place.country
+  ].filter(Boolean);
+  return parts.join(', ') || 'Earth';
+}
+
+export default function PlaceMap({ place }) {
+  const { embedSrc, externalUrl } = useMemo(() => {
+    const query = buildMapsQuery(place);
+    return {
+      embedSrc: `https://maps.google.com/maps?q=${encodeURIComponent(query)}&z=12&hl=en&output=embed`,
+      externalUrl: `https://maps.google.com/?q=${encodeURIComponent(query)}`
     };
   }, [place]);
 
-  useEffect(() => {
-    if (!coords || !mapContainerRef.current) return;
-
-    if (mapRef.current) {
-      mapRef.current.remove();
-      mapRef.current = null;
-    }
-
-    const map = L.map(mapContainerRef.current, {
-      zoomControl: true,
-      scrollWheelZoom: false
-    }).setView([coords.lat, coords.lon], 12);
-
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
-      maxZoom: 19
-    }).addTo(map);
-
-    const icon = L.divIcon({
-      className: 'ht-map-pin',
-      html: '<div class="ht-map-pin-dot"></div>',
-      iconSize: [18, 18],
-      iconAnchor: [9, 9]
-    });
-
-    L.marker([coords.lat, coords.lon], { icon })
-      .addTo(map)
-      .bindPopup(`<b>${place?.name || place?.title || 'Destination'}</b>`)
-      .openPopup();
-
-    mapRef.current = map;
-    return () => {
-      map.remove();
-      mapRef.current = null;
-    };
-  }, [coords, place]);
+  const label = place?.name || place?.title || 'destination';
 
   return (
     <div className="space-y-3">
-      <div
-        ref={mapContainerRef}
-        className="w-full h-[340px] sm:h-[400px] rounded-3xl overflow-hidden border border-white/10 z-0"
-        style={{ background: '#141417' }}
-      />
-      <div className="flex items-center justify-between text-[10px] font-mono text-white/35">
-        <span>
-          {geocoding
-            ? 'Locating destination…'
-            : error
-              ? error
-              : `📍 ${coords ? `${coords.lat.toFixed(4)}, ${coords.lon.toFixed(4)}` : ''}`}
-        </span>
-        <span>Powered by OpenStreetMap • No API key required</span>
+      <div className="w-full h-[340px] sm:h-[400px] rounded-3xl overflow-hidden border border-white/10 bg-[#141417]">
+        <iframe
+          title={`Map of ${label}`}
+          src={embedSrc}
+          className="w-full h-full border-0"
+          loading="lazy"
+          allowFullScreen
+          referrerPolicy="no-referrer-when-downgrade"
+        />
+      </div>
+      <div className="flex items-center justify-between gap-3 text-[10px] font-mono text-white/35">
+        <span className="truncate">📍 Live map of {label}</span>
+        <a
+          href={externalUrl}
+          target="_blank"
+          rel="noreferrer"
+          className="shrink-0 hover:text-brand-gold transition-colors"
+        >
+          Open in Google Maps ↗
+        </a>
       </div>
     </div>
   );

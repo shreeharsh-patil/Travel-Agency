@@ -1,12 +1,8 @@
 import React, { useRef } from 'react';
 
-import gsap from 'gsap';
-import { ScrollTrigger } from 'gsap/ScrollTrigger';
 import HeroCanvas from './HeroCanvas';
 import PricingSection from './PricingSection';
 import BentoGrid from './BentoGrid';
-
-gsap.registerPlugin(ScrollTrigger);
 
 export default function HomePage() {
     const containerRef = useRef(null);

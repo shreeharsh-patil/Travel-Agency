@@ -2,12 +2,10 @@ import { useState, useEffect } from 'react';
 import classNames from 'classnames';
 import { Link, useLocation } from 'react-router-dom';
 import { AnimatePresence, motion } from 'framer-motion';
-import ReservationForm from './ReservationForm';
 import GlobalSearchModal from './GlobalSearchModal';
 
 export default function Header() {
     const [scrolled, setScrolled] = useState(false);
-    const [showReserve, setShowReserve] = useState(false);
     const [showSearchModal, setShowSearchModal] = useState(false);
     const [menuOpen, setMenuOpen] = useState(false);
     const [user, setUser] = useState(null);
@@ -141,11 +139,6 @@ export default function Header() {
                 isOpen={showSearchModal}
                 onClose={() => setShowSearchModal(false)}
             />
-
-            {/* Reservation Form Modal */}
-            <AnimatePresence>
-                {showReserve && <ReservationForm onClose={() => setShowReserve(false)} />}
-            </AnimatePresence>
 
             {/* Mobile Navigation Drawer */}
             <AnimatePresence>

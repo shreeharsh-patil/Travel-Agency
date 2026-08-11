@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import ReservationForm from './ReservationForm';
@@ -26,13 +26,24 @@ export default function PlaceDetailPage() {
   useEffect(() => {
     fetchPlaceAndReviews();
     checkIsSaved();
-  }, [slug]);
+  }, [fetchPlaceAndReviews, checkIsSaved]);
 
   const [weatherData, setWeatherData] = useState(null);
   const [freeAttractions, setFreeAttractions] = useState([]);
   const [sunTimesData, setSunTimesData] = useState(null);
+  const [comments, setComments] = useState([]);
+  const [ratingBreakdown, setRatingBreakdown] = useState([]);
+  const [expense, setExpense] = useState(null);
+  const [uvIndex, setUvIndex] = useState(null);
+  const [showCommentModal, setShowCommentModal] = useState(false);
+  const [commentText, setCommentText] = useState('');
+  const [commentSubmitting, setCommentSubmitting] = useState(false);
+  const [commentError, setCommentError] = useState(null);
+  const [commentSuccess, setCommentSuccess] = useState(null);
+  const [expenseDays, setExpenseDays] = useState(4);
+  const [expenseTravellers, setExpenseTravellers] = useState(2);
 
-  const fetchPlaceAndReviews = async () => {
+  const fetchPlaceAndReviews = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
@@ -42,11 +53,23 @@ export default function PlaceDetailPage() {
       const data = await res.json();
       setPlace(data.place);
 
+      const placeId = data.place.slug || data.place.id || slug;
+      const placeLat = data.place.lat || 15.2993;
+      const placeLon = data.place.lon || 74.124;
+
       // Fetch reviews
-      const revRes = await fetch(`/api/reviews?place_id=${data.place.slug || data.place.id || slug}`);
+      const revRes = await fetch(`/api/reviews?place_id=${placeId}`);
       if (revRes.ok) {
         const revData = await revRes.json();
         setReviews(revData.reviews || []);
+        if (revData.ratingBreakdown) setRatingBreakdown(revData.ratingBreakdown);
+      }
+
+      // Fetch comments
+      const cmtRes = await fetch(`/api/comments?place_id=${placeId}`);
+      if (cmtRes.ok) {
+        const cmtData = await cmtRes.json();
+        setComments(cmtData.comments || []);
       }
 
       // Fetch live free weather
@@ -56,7 +79,7 @@ export default function PlaceDetailPage() {
         .catch(() => {});
 
       // Fetch solar photography times
-      fetch(`/api/sun-times`)
+      fetch(`/api/sun-times?lat=${placeLat}&lon=${placeLon}`)
         .then(r => r.json())
         .then(s => setSunTimesData(s))
         .catch(() => {});
@@ -65,6 +88,15 @@ export default function PlaceDetailPage() {
       fetch(`/api/free-attractions?destination=${data.place.name || slug}`)
         .then(r => r.json())
         .then(fa => setFreeAttractions(fa.attractions || []))
+        .catch(() => {});
+
+      // Fetch trip expense estimate (INR) — handled in a dedicated effect
+      // so changing days/travellers doesn't reload the whole page.
+
+      // Fetch UV index for sun safety
+      fetch(`/api/uv-index?lat=${placeLat}&lon=${placeLon}`)
+        .then(r => r.json())
+        .then(u => setUvIndex(u))
         .catch(() => {});
 
       const weatherRes = await fetch(`/api/weather?city=${slug}`);
@@ -85,10 +117,10 @@ export default function PlaceDetailPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [slug]);
 
 
-  const checkIsSaved = async () => {
+  const checkIsSaved = useCallback(async () => {
     const token = localStorage.getItem('horizon_token');
     if (!token) return;
     try {
@@ -102,7 +134,20 @@ export default function PlaceDetailPage() {
     } catch (err) {
       console.error('Check saved error:', err);
     }
-  };
+  }, [slug]);
+
+  // Dedicated effect for expense estimator so slider changes don't reload the page
+  useEffect(() => {
+    if (!place) return;
+    const placeId = place.slug || place.id || slug;
+    const timer = setTimeout(() => {
+      fetch(`/api/expense?destination=${placeId}&days=${expenseDays}&travellers=${expenseTravellers}`)
+        .then(r => r.json())
+        .then(e => setExpense(e))
+        .catch(() => {});
+    }, 250);
+    return () => clearTimeout(timer);
+  }, [place, slug, expenseDays, expenseTravellers]);
 
   const toggleFavorite = async () => {
     const token = localStorage.getItem('horizon_token');
@@ -174,6 +219,51 @@ export default function PlaceDetailPage() {
       setReviewError(err.message || 'Failed to submit review.');
     } finally {
       setReviewSubmitting(false);
+    }
+  };
+
+  const handleCommentSubmit = async (e) => {
+    e.preventDefault();
+    setCommentSubmitting(true);
+    setCommentError(null);
+    setCommentSuccess(null);
+
+    const token = localStorage.getItem('horizon_token');
+    if (!token) {
+      setCommentError('Please log in to comment on this destination.');
+      setCommentSubmitting(false);
+      return;
+    }
+
+    try {
+      const res = await fetch('/api/comments', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          place_id: place.slug || place.id || slug,
+          text: commentText
+        })
+      });
+
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error || 'Could not post comment.');
+      }
+
+      setCommentSuccess('Comment added successfully!');
+      setCommentText('');
+      setComments((prev) => [data.comment, ...prev]);
+      setTimeout(() => {
+        setShowCommentModal(false);
+        setCommentSuccess(null);
+      }, 1200);
+    } catch (err) {
+      setCommentError(err.message || 'Failed to post comment.');
+    } finally {
+      setCommentSubmitting(false);
     }
   };
 
@@ -303,7 +393,7 @@ export default function PlaceDetailPage() {
                 <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
                   {place.gallery.map((img, i) => (
                     <div key={i} className="h-40 rounded-2xl overflow-hidden border border-white/10 group">
-                      <img src={img} alt={`${place.name} gallery ${i}`} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
+                      <img src={img} alt={`${place.name} gallery ${i}`} loading="lazy" decoding="async" className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
                     </div>
                   ))}
                 </div>
@@ -474,6 +564,24 @@ export default function PlaceDetailPage() {
                 </div>
               </div>
 
+              {/* Rating Breakdown Bars */}
+              {ratingBreakdown.length > 0 && (
+                <div className="grid grid-cols-1 md:grid-cols-5 gap-2 pb-2">
+                  {[...ratingBreakdown].sort((a, b) => b.rating - a.rating).map((rb) => (
+                    <div key={rb.rating} className="flex items-center gap-2">
+                      <span className="text-[10px] font-mono text-white/60 w-6 shrink-0">{rb.rating}★</span>
+                      <div className="flex-1 h-1.5 rounded-full bg-white/10 overflow-hidden">
+                        <div
+                          className="h-full rounded-full bg-brand-gold"
+                          style={{ width: `${rb.percentage}%` }}
+                        />
+                      </div>
+                      <span className="text-[10px] font-mono text-white/40 w-7 text-right shrink-0">{rb.count}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+
               {/* Reviews List */}
               {sortedReviews.length === 0 ? (
                 <div className="text-center py-10 text-white/50 space-y-3">
@@ -519,6 +627,54 @@ export default function PlaceDetailPage() {
                 </div>
               )}
             </div>
+
+            {/* COMMENTS SECTION */}
+            <div className="bg-[#121214] border border-white/10 rounded-3xl p-6 sm:p-8 space-y-6">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-white/10 pb-6">
+                <div>
+                  <h3 className="font-serif text-2xl text-white">Traveler Comments</h3>
+                  <p className="text-white/50 text-xs font-mono mt-1">
+                    {comments.length} comment{comments.length !== 1 ? 's' : ''} on this destination
+                  </p>
+                </div>
+                <button
+                  onClick={() => setShowCommentModal(true)}
+                  className="px-5 py-2.5 rounded-full bg-white text-black text-xs font-bold uppercase tracking-wider hover:bg-brand-gold hover:text-white transition-colors"
+                >
+                  + Add a Comment
+                </button>
+              </div>
+
+              {comments.length === 0 ? (
+                <div className="text-center py-8 text-white/50 space-y-3">
+                  <span className="text-3xl block">💬</span>
+                  <p className="text-xs font-mono uppercase tracking-widest">No comments yet. Start the conversation!</p>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {comments.map((cmt) => (
+                    <div key={cmt._id} className="p-4 rounded-2xl bg-white/5 border border-white/10 space-y-2">
+                      <div className="flex justify-between items-start">
+                        <div className="flex items-center gap-3">
+                          <img
+                            src={cmt.user_avatar || 'https://api.dicebear.com/7.x/avataaars/svg?seed=User'}
+                            alt={cmt.user_name}
+                            className="w-8 h-8 rounded-full bg-white/10 object-cover"
+                          />
+                          <div>
+                            <span className="text-sm font-semibold text-white block">{cmt.user_name || 'Anonymous'}</span>
+                            <span className="text-[10px] text-white/40 font-mono">
+                              {cmt.created_at ? new Date(cmt.created_at).toLocaleDateString() : 'Verified Traveler'}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                      <p className="text-white/80 text-xs leading-relaxed">{cmt.text}</p>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
 
           {/* Right Column: Travel Info Card */}
@@ -552,6 +708,81 @@ export default function PlaceDetailPage() {
                 Reserve Stay in {place.name || place.title}
               </button>
             </div>
+
+            {/* Expense Estimator Widget */}
+            <div className="bg-[#141417] border border-white/10 rounded-3xl p-6 space-y-5">
+              <div>
+                <span className="text-xs font-mono text-brand-gold uppercase tracking-widest block">💰 Trip Expense Estimator</span>
+                <h4 className="font-serif text-xl text-white mt-1">Estimated Budget (INR)</h4>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <span className="text-white/40 font-mono uppercase block text-[10px] mb-1">Days</span>
+                  <input
+                    type="number"
+                    min="1"
+                    max="30"
+                    value={expenseDays}
+                    onChange={(e) => setExpenseDays(Math.min(30, Math.max(1, parseInt(e.target.value, 10) || 1)))}
+                    className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-white text-sm focus:border-brand-gold focus:outline-none"
+                  />
+                </div>
+                <div>
+                  <span className="text-white/40 font-mono uppercase block text-[10px] mb-1">Travellers</span>
+                  <input
+                    type="number"
+                    min="1"
+                    max="10"
+                    value={expenseTravellers}
+                    onChange={(e) => setExpenseTravellers(Math.min(10, Math.max(1, parseInt(e.target.value, 10) || 1)))}
+                    className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-white text-sm focus:border-brand-gold focus:outline-none"
+                  />
+                </div>
+              </div>
+
+              {expense ? (
+                <div className="space-y-3">
+                  <div className="p-4 rounded-2xl bg-brand-gold/10 border border-brand-gold/30 text-center">
+                    <span className="text-[10px] font-mono text-brand-gold uppercase block">Total Estimate</span>
+                    <span className="font-mono text-2xl font-bold text-brand-gold block">{expense.totalFormatted}</span>
+                    <span className="text-[10px] font-mono text-white/50">≈ {expense.perPersonFormatted} per person</span>
+                  </div>
+                  <div className="space-y-2 text-xs font-sans">
+                    <div className="flex justify-between"><span className="text-white/50">Flights (return)</span><span className="text-white font-medium">{formatINR(expense.breakdown.flights.amount)}</span></div>
+                    <div className="flex justify-between"><span className="text-white/50">Stay</span><span className="text-white font-medium">{formatINR(expense.breakdown.stay.amount)}</span></div>
+                    <div className="flex justify-between"><span className="text-white/50">Food</span><span className="text-white font-medium">{formatINR(expense.breakdown.food.amount)}</span></div>
+                    <div className="flex justify-between"><span className="text-white/50">Local Transport</span><span className="text-white font-medium">{formatINR(expense.breakdown.localTransport.amount)}</span></div>
+                    <div className="flex justify-between"><span className="text-white/50">Activities</span><span className="text-white font-medium">{formatINR(expense.breakdown.activities.amount)}</span></div>
+                  </div>
+                  <p className="text-[10px] text-white/40 italic">{expense.disclaimer}</p>
+                </div>
+              ) : (
+                <div className="text-center py-4 text-white/40 text-xs font-mono">Calculating estimate...</div>
+              )}
+            </div>
+
+            {/* UV Index Widget */}
+            {uvIndex && (
+              <div className="bg-[#141417] border border-white/10 rounded-3xl p-6 space-y-3">
+                <span className="text-xs font-mono text-brand-gold uppercase tracking-widest block">☀️ UV Index</span>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <span className="font-mono text-3xl font-bold text-white">{uvIndex.uvIndexMax}</span>
+                    <span className="text-xs text-white/50 font-mono ml-1 block">{uvIndex.level}</span>
+                  </div>
+                  <span className={`px-3 py-1 rounded-full text-[10px] font-mono font-bold ${
+                    uvIndex.uvIndexMax <= 2 ? 'bg-green-500/20 text-green-300'
+                    : uvIndex.uvIndexMax <= 5 ? 'bg-yellow-500/20 text-yellow-300'
+                    : uvIndex.uvIndexMax <= 7 ? 'bg-orange-500/20 text-orange-300'
+                    : 'bg-red-500/20 text-red-300'
+                  }`}>
+                    {uvIndex.uvIndexMax <= 2 ? 'Low' : uvIndex.uvIndexMax <= 5 ? 'Moderate' : uvIndex.uvIndexMax <= 7 ? 'High' : 'Very High'}
+                  </span>
+                </div>
+                <p className="text-[10px] text-white/40 leading-relaxed">{uvIndex.advice}</p>
+              </div>
+            )}
           </div>
         </div>
       </div>
@@ -655,6 +886,71 @@ export default function PlaceDetailPage() {
             destination={place}
             onClose={() => setShowReserveModal(false)}
           />
+        )}
+      </AnimatePresence>
+
+      {/* Comment Form Modal */}
+      <AnimatePresence>
+        {showCommentModal && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[100] bg-black/80 backdrop-blur-md flex items-center justify-center p-4"
+          >
+            <motion.div
+              initial={{ scale: 0.95, y: 20 }}
+              animate={{ scale: 1, y: 0 }}
+              exit={{ scale: 0.95, y: 20 }}
+              className="relative w-full max-w-lg bg-[#141417] border border-white/15 rounded-3xl p-6 sm:p-8 space-y-6 shadow-2xl"
+            >
+              <button
+                onClick={() => setShowCommentModal(false)}
+                className="absolute top-4 right-4 w-8 h-8 rounded-full bg-white/10 flex items-center justify-center text-white/70 hover:text-white"
+              >
+                ✕
+              </button>
+
+              <div>
+                <span className="text-xs font-mono text-brand-gold uppercase tracking-widest">Join the Conversation</span>
+                <h3 className="font-serif text-2xl text-white mt-1">Comment on {place.name || place.title}</h3>
+              </div>
+
+              {commentSuccess && (
+                <div className="p-3 rounded-xl bg-green-500/10 border border-green-500/30 text-green-300 text-xs text-center">
+                  ✓ {commentSuccess}
+                </div>
+              )}
+
+              {commentError && (
+                <div className="p-3 rounded-xl bg-red-500/10 border border-red-500/30 text-red-300 text-xs text-center">
+                  ⚠️ {commentError}
+                </div>
+              )}
+
+              <form onSubmit={handleCommentSubmit} className="space-y-4">
+                <div className="space-y-1">
+                  <label className="text-xs uppercase font-mono text-white/60">Your Comment *</label>
+                  <textarea
+                    rows="4"
+                    required
+                    placeholder="Share tips, travel notes, or questions for other travelers..."
+                    value={commentText}
+                    onChange={(e) => setCommentText(e.target.value)}
+                    className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-white text-sm focus:border-brand-gold focus:outline-none"
+                  />
+                </div>
+
+                <button
+                  type="submit"
+                  disabled={commentSubmitting}
+                  className="w-full py-3.5 rounded-full bg-brand-gold text-black font-bold text-xs uppercase tracking-widest hover:bg-white transition-all shadow-lg"
+                >
+                  {commentSubmitting ? 'Posting...' : 'Post Comment 💬'}
+                </button>
+              </form>
+            </motion.div>
+          </motion.div>
         )}
       </AnimatePresence>
     </section>

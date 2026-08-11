@@ -15,6 +15,8 @@ export default function GenericPage({ title, subtitle, image }) {
                     <img
                         src={image || "https://images.unsplash.com/photo-1570215777329-31846baaa7df?q=80&w=2787&auto=format&fit=crop"}
                         alt={title}
+                        loading="lazy"
+                        decoding="async"
                         className="w-full h-full object-cover"
                     />
                     <div className="absolute inset-0 bg-black/30 flex items-center justify-center">

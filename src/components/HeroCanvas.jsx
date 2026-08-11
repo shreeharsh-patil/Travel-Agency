@@ -3,6 +3,8 @@ import gsap from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
 import { useCanvasVideo } from '../hooks/useCanvasVideo';
 
+// GSAP is pulled into its own lazy chunk by vite.config.js (manualChunks),
+// which is only fetched when the home page loads.
 gsap.registerPlugin(ScrollTrigger);
 
 export default function HeroCanvas({ scrollTrackRef }) {
@@ -11,7 +13,7 @@ export default function HeroCanvas({ scrollTrackRef }) {
     const textRef2 = useRef(null);
     const textRef3 = useRef(null);
 
-    // Use the hook to get the image drawing function
+    // Use the hook to get the image drawing function (frames lazy-load on scroll).
     const { drawFrame, isLoading, progress } = useCanvasVideo(canvasRef);
 
     useEffect(() => {
@@ -22,63 +24,61 @@ export default function HeroCanvas({ scrollTrackRef }) {
 
         // Resize handler using the current progress
         const handleResize = () => {
-            const st = ScrollTrigger.getById("hero-scroll");
+            const st = ScrollTrigger.getById('hero-scroll');
             if (st) {
                 drawFrame(st.progress * 277);
             }
         };
         window.addEventListener('resize', handleResize);
 
-        // GSAP ScrollTrigger
-        // We do NOT pin here. We just track the parent container's progress.
+        // GSAP ScrollTrigger — track the parent container's progress.
         const tl = gsap.timeline({
             scrollTrigger: {
-                id: "hero-scroll",
-                trigger: scrollTrackRef.current, // The 300vh container from parent
-                start: "top top",
-                end: "bottom bottom",
-                scrub: 0, // Instant response (no lag) or slight smoothing like 0.1
+                id: 'hero-scroll',
+                trigger: scrollTrackRef.current,
+                start: 'top top',
+                end: 'bottom bottom',
+                scrub: 0,
                 onUpdate: (self) => {
                     const frameIndex = Math.floor(self.progress * 277);
                     drawFrame(frameIndex);
-                }
-            }
+                },
+            },
         });
 
-        // TEXT ANIMATIONS
-        // Sync these to the timeline (0 to 1 progress of the container)
+        // TEXT ANIMATIONS (0 to 1 progress of the container)
 
         // Scene 1: EXPLORE PARADISE (0% - 25%)
-        tl.fromTo(textRef1.current,
+        tl.fromTo(
+            textRef1.current,
             { opacity: 0, scale: 0.9, y: 50 },
-            { opacity: 1, scale: 1, y: 0, ease: 'power2.out', duration: 0.1 }, 0
+            { opacity: 1, scale: 1, y: 0, ease: 'power2.out', duration: 0.1 },
+            0
         );
-        tl.to(textRef1.current,
-            { opacity: 0, scale: 1.1, y: -50, ease: 'power2.in', duration: 0.05 }, 0.2
-        );
+        tl.to(textRef1.current, { opacity: 0, scale: 1.1, y: -50, ease: 'power2.in', duration: 0.05 }, 0.2);
 
         // Scene 2: FINANCING PLANS (30% - 60%)
-        tl.fromTo(textRef2.current,
+        tl.fromTo(
+            textRef2.current,
             { opacity: 0, x: -50 },
-            { opacity: 1, x: 0, ease: 'power2.out', duration: 0.1 }, 0.3
+            { opacity: 1, x: 0, ease: 'power2.out', duration: 0.1 },
+            0.3
         );
-        tl.to(textRef2.current,
-            { opacity: 0, x: -50, ease: 'power2.in', duration: 0.05 }, 0.55
-        );
+        tl.to(textRef2.current, { opacity: 0, x: -50, ease: 'power2.in', duration: 0.05 }, 0.55);
 
         // Scene 3: YOU DESERVE IT (65% - 100%)
-        tl.fromTo(textRef3.current,
+        tl.fromTo(
+            textRef3.current,
             { opacity: 0, scale: 0.9, y: 50 },
-            { opacity: 1, scale: 1, y: 0, ease: 'power2.out', duration: 0.1 }, 0.65
+            { opacity: 1, scale: 1, y: 0, ease: 'power2.out', duration: 0.1 },
+            0.65
         );
-        // It stays visible until the end, then scrolls away naturally with the sticky container
 
         return () => {
             window.removeEventListener('resize', handleResize);
-            ScrollTrigger.getById("hero-scroll")?.kill();
+            ScrollTrigger.getById('hero-scroll')?.kill();
             tl.kill();
         };
-
     }, [isLoading, drawFrame, scrollTrackRef]);
 
     if (isLoading) {

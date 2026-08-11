@@ -57,7 +57,7 @@ export default function GuidesListingPage() {
               className="bg-[#121214] border border-white/10 rounded-3xl overflow-hidden shadow-2xl flex flex-col justify-between group"
             >
               <div className="h-56 relative overflow-hidden">
-                <img src={g.image} alt={g.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
+                <img src={g.image} alt={g.title} loading="lazy" decoding="async" className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
                 <span className="absolute top-4 left-4 bg-black/60 backdrop-blur-md px-3 py-1 rounded-full text-[10px] font-mono text-brand-gold border border-brand-gold/30 uppercase">
                   {g.category}
                 </span>

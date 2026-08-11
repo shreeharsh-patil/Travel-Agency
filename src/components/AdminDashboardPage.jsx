@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 
 const EMPTY_POST = { title: '', category: 'Journal', excerpt: '', content: '', image: '', published: true };
 
@@ -33,20 +33,20 @@ export default function AdminDashboardPage() {
 
   useEffect(() => {
     fetchAdminData();
-  }, []);
+  }, [fetchAdminData]);
 
   const notify = (msg) => {
     setActionMsg(msg);
     setTimeout(() => setActionMsg(null), 3000);
   };
 
-  const fetchAdminData = async () => {
+  const fetchAdminData = useCallback(async () => {
     setLoading(true);
     try {
       const statsRes = await fetch('/api/admin/stats');
       if (statsRes.ok) {
         const statsData = await statsRes.json();
-        setStats(statsData.stats || stats);
+        setStats((prev) => statsData.stats || prev);
       }
 
       const placesRes = await fetch('/api/places?status=PENDING');
@@ -83,7 +83,7 @@ export default function AdminDashboardPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
   const handlePlaceStatus = async (placeId, status) => {
     try {

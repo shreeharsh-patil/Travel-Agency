@@ -113,7 +113,7 @@ export default function FavoritesPage() {
                 className="bg-[#141416] border border-white/10 rounded-3xl overflow-hidden shadow-xl flex flex-col justify-between group"
               >
                 <div className="h-52 relative overflow-hidden">
-                  <img src={item.image} alt={item.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
+                  <img src={item.image} alt={item.name} loading="lazy" decoding="async" className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
                   <button
                     onClick={() => removeFavorite(item.id)}
                     className="absolute top-3 right-3 w-8 h-8 rounded-full bg-black/60 backdrop-blur-md text-red-400 flex items-center justify-center hover:bg-black"

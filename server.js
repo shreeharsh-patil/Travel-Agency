@@ -40,5 +40,6 @@ function startServer(port) {
   });
 }
 
-const initialPort = parseInt(process.env.PORT || '3001', 10);
+// Default to 3002 to match the Vite dev proxy (see vite.config.js).
+const initialPort = parseInt(process.env.PORT || '3002', 10);
 startServer(initialPort);

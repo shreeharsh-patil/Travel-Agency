@@ -55,7 +55,7 @@ export default function SeasonalOffersPage() {
               className="bg-[#121214] border border-brand-gold/30 rounded-3xl overflow-hidden shadow-2xl flex flex-col justify-between group"
             >
               <div className="h-64 relative overflow-hidden">
-                <img src={offer.image} alt={offer.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
+                <img src={offer.image} alt={offer.title} loading="lazy" decoding="async" className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
                 <span className="absolute top-4 left-4 bg-brand-gold text-black font-bold font-mono px-3 py-1 rounded-full text-xs uppercase">
                   SAVE {offer.discountPercent}%
                 </span>

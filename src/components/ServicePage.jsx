@@ -16,6 +16,8 @@ export default function ServicePage({ title, subtitle, heroImage, description, f
                     <img
                         src={heroImage}
                         alt={title}
+                        loading="lazy"
+                        decoding="async"
                         className="w-full h-[120%] object-cover opacity-60"
                     />
                 </motion.div>

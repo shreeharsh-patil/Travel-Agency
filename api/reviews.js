@@ -87,10 +87,25 @@ export default async function handler(req, res) {
         avgRating = Number((sum / reviews.length).toFixed(1));
       }
 
+      // Star distribution breakdown (percentage per rating level)
+      const distribution = { 5: 0, 4: 0, 3: 0, 2: 0, 1: 0 };
+      reviews.forEach((r) => {
+        const rating = Math.min(5, Math.max(1, Math.round(r.rating || 5)));
+        distribution[rating] += 1;
+      });
+      const total = reviews.length || 1;
+      const ratingBreakdown = Object.keys(distribution).map((star) => ({
+        rating: parseInt(star, 10),
+        count: distribution[star],
+        percentage: Math.round((distribution[star] / total) * 100)
+      }));
+
       return res.status(200).json({
         reviews,
         totalCount: reviews.length,
-        averageRating: avgRating || 4.8
+        averageRating: avgRating || 4.8,
+        ratingBreakdown,
+        ratingDistribution: distribution
       });
     } catch (err) {
       console.error('[GET /api/reviews]', err);

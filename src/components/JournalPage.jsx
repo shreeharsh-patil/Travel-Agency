@@ -139,6 +139,8 @@ export default function JournalPage() {
                   <img
                     src={post.image}
                     alt={post.title}
+                    loading="lazy"
+                    decoding="async"
                     className="w-full aspect-[4/3] object-cover transition-transform duration-700 group-hover:scale-105"
                   />
                 </div>

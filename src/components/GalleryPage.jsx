@@ -47,6 +47,8 @@ export default function GalleryPage() {
                                 layoutId={`image-${item.id}`}
                                 src={item.src}
                                 alt={item.alt}
+                                loading="lazy"
+                                decoding="async"
                                 className="w-full h-auto object-cover transform transition-transform duration-700 group-hover:scale-105"
                             />
                             <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity duration-500 flex items-center justify-center">

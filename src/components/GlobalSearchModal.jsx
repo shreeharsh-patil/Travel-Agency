@@ -174,6 +174,8 @@ export default function GlobalSearchModal({ isOpen, onClose }) {
                           <img
                             src={place.image}
                             alt={place.name}
+                            loading="lazy"
+                            decoding="async"
                             className="w-16 h-16 rounded-xl object-cover"
                           />
                           <div className="flex-1 min-w-0">
@@ -210,9 +212,11 @@ export default function GlobalSearchModal({ isOpen, onClose }) {
                             </span>
                           </div>
                           <p className="text-white/50 text-[10px] truncate">{ext.displayName}</p>
-                          <div className="text-[10px] font-mono text-brand-gold">
-                            GPS: {ext.coordinates.lat.toFixed(2)}°, {ext.coordinates.lon.toFixed(2)}°
-                          </div>
+                          {ext.coordinates && (
+                            <div className="text-[10px] font-mono text-brand-gold">
+                              GPS: {Number(ext.coordinates.lat).toFixed(2)}°, {Number(ext.coordinates.lon).toFixed(2)}°
+                            </div>
+                          )}
                         </div>
                       ))}
                     </div>
@@ -232,7 +236,7 @@ export default function GlobalSearchModal({ isOpen, onClose }) {
                       {results.packages.map((pkg) => (
                         <Link
                           key={pkg.id}
-                          to={`/places/${pkg.placeSlug}`}
+                          to={`/places/${pkg.placeSlug || pkg.slug || ''}`}
                           onClick={onClose}
                           className="p-3 rounded-xl bg-white/5 border border-white/10 hover:border-white/20 flex justify-between items-center text-xs"
                         >

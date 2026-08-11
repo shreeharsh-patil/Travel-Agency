@@ -1,25 +1,35 @@
 import { ReactLenis } from '@studio-freight/react-lenis';
-import { useEffect } from 'react';
+import { useEffect, lazy, Suspense } from 'react';
 import { BrowserRouter as Router, Routes, Route, useLocation } from 'react-router-dom';
 import Header from './components/Header';
 import Footer from './components/Footer';
 import GenericPage from './components/GenericPage';
-import TravelPage from './components/TravelPage';
-import ServicePage from './components/ServicePage';
-import HomePage from './components/HomePage';
-import GalleryPage from './components/GalleryPage';
-import ContactPage from './components/ContactPage';
-import LoginPage from './components/LoginPage';
-import JournalPage from './components/JournalPage';
-import PlaceDetailPage from './components/PlaceDetailPage';
-import SuggestPlacePage from './components/SuggestPlacePage';
-import FavoritesPage from './components/FavoritesPage';
-import AdminDashboardPage from './components/AdminDashboardPage';
-import PlanTripPage from './components/PlanTripPage';
-import MyTripsPage from './components/MyTripsPage';
-import UserAccountPage from './components/UserAccountPage';
-import GuidesListingPage from './components/GuidesListingPage';
-import SeasonalOffersPage from './components/SeasonalOffersPage';
+
+// Route-level code splitting — each page loads only when visited.
+const HomePage = lazy(() => import('./components/HomePage'));
+const TravelPage = lazy(() => import('./components/TravelPage'));
+const ServicePage = lazy(() => import('./components/ServicePage'));
+const GalleryPage = lazy(() => import('./components/GalleryPage'));
+const ContactPage = lazy(() => import('./components/ContactPage'));
+const LoginPage = lazy(() => import('./components/LoginPage'));
+const JournalPage = lazy(() => import('./components/JournalPage'));
+const PlaceDetailPage = lazy(() => import('./components/PlaceDetailPage'));
+const SuggestPlacePage = lazy(() => import('./components/SuggestPlacePage'));
+const FavoritesPage = lazy(() => import('./components/FavoritesPage'));
+const AdminDashboardPage = lazy(() => import('./components/AdminDashboardPage'));
+const PlanTripPage = lazy(() => import('./components/PlanTripPage'));
+const MyTripsPage = lazy(() => import('./components/MyTripsPage'));
+const UserAccountPage = lazy(() => import('./components/UserAccountPage'));
+const GuidesListingPage = lazy(() => import('./components/GuidesListingPage'));
+const SeasonalOffersPage = lazy(() => import('./components/SeasonalOffersPage'));
+
+function PageLoader() {
+  return (
+    <div className="min-h-screen bg-[#0c0c0c] flex items-center justify-center">
+      <div className="w-9 h-9 border-2 border-brand-gold border-t-transparent rounded-full animate-spin" />
+    </div>
+  );
+}
 
 function ScrollToTop() {
   const { pathname } = useLocation();
@@ -43,90 +53,92 @@ function App() {
           <Header />
           <ScrollToTop />
 
-          <Routes>
-            <Route path="/" element={<HomePage />} />
-            <Route path="/journal" element={<JournalPage />} />
-            <Route path="/about" element={<GenericPage title="About Us" subtitle="Our Story" image="/images/swiss_alps.png" />} />
-            <Route path="/dates" element={<GenericPage title="Availability" subtitle="Plan Your Stay" image="/images/tropical_beach.png" />} />
-            <Route path="/travel" element={<TravelPage />} />
-            
-            {/* Real Data Platform Routes */}
-            <Route path="/places/:slug" element={<PlaceDetailPage />} />
-            <Route path="/destinations/:slug" element={<PlaceDetailPage />} />
-            <Route path="/suggest-place" element={<SuggestPlacePage />} />
-            <Route path="/favorites" element={<FavoritesPage />} />
-            <Route path="/account/saved" element={<FavoritesPage />} />
-            <Route path="/admin" element={<AdminDashboardPage />} />
+          <Suspense fallback={<PageLoader />}>
+            <Routes>
+              <Route path="/" element={<HomePage />} />
+              <Route path="/journal" element={<JournalPage />} />
+              <Route path="/about" element={<GenericPage title="About Us" subtitle="Our Story" image="/images/swiss_alps.png" />} />
+              <Route path="/dates" element={<GenericPage title="Availability" subtitle="Plan Your Stay" image="/images/tropical_beach.png" />} />
+              <Route path="/travel" element={<TravelPage />} />
 
-            <Route path="/plan-trip" element={<PlanTripPage />} />
-            <Route path="/my-trips" element={<MyTripsPage />} />
-            <Route path="/account" element={<UserAccountPage />} />
-            <Route path="/guides" element={<GuidesListingPage />} />
-            <Route path="/offers" element={<SeasonalOffersPage />} />
+              {/* Real Data Platform Routes */}
+              <Route path="/places/:slug" element={<PlaceDetailPage />} />
+              <Route path="/destinations/:slug" element={<PlaceDetailPage />} />
+              <Route path="/suggest-place" element={<SuggestPlacePage />} />
+              <Route path="/favorites" element={<FavoritesPage />} />
+              <Route path="/account/saved" element={<FavoritesPage />} />
+              <Route path="/admin" element={<AdminDashboardPage />} />
 
-            <Route path="/gallery" element={<GalleryPage />} />
-            <Route path="/private-jets" element={
-              <ServicePage
-                title="Private Aviation"
-                subtitle="Fly on Your Terms"
-                heroImage="/images/private_jet.png"
-                description="Bypass long lines and commercial terminals. Experience the ultimate freedom of private aviation with our fleet of long-range jets, tailored catering, and seamless ground transport."
-                features={[
-                  { title: "Global Reach", desc: "Access to 5,000+ airports" },
-                  { title: "On-Demand", desc: "Ready in as little as 4 hours" },
-                  { title: "Pet Friendly", desc: "Bring your companions" },
-                  { title: "Privacy", desc: "Discrete terminals & lounges" }
-                ]}
-              />
-            } />
-            <Route path="/villas" element={
-              <ServicePage
-                title="Luxury Villas"
-                subtitle="Your Private Sanctuary"
-                heroImage="/images/villa_mansion.png"
-                description="From clifftop estates in Amalfi to beachfront mansions in Turks & Caicos. Our portfolio of private villas offers the space, privacy, and amenities of a five-star resort, exclusively for you."
-                features={[
-                  { title: "Private Staff", desc: "Chefs, butlers, & housekeeping" },
-                  { title: "Exclusive Access", desc: "Beaches & golf courses" },
-                  { title: "Concierge", desc: "24/7 Itinerary planning" },
-                  { title: "Design", desc: "Award-winning architecture" }
-                ]}
-              />
-            } />
-            <Route path="/experiences" element={
-              <ServicePage
-                title="Curated Experiences"
-                subtitle="Memories for a Lifetime"
-                heroImage="/images/yacht.png"
-                description="Go beyond the guidebook. Whether it's a private after-hours tour of the Vatican, shark diving in South Africa, or truffle hunting in Piedmont, we unlock the world's most exclusive moments."
-                features={[
-                  { title: "Access", desc: "Behind closed doors" },
-                  { title: "Guides", desc: "Local experts & historians" },
-                  { title: "Adventure", desc: "Custom expeditions" },
-                  { title: "Culture", desc: "Immersive workshops" }
-                ]}
-              />
-            } />
-            <Route path="/concierge" element={
-              <ServicePage
-                title="Global Concierge"
-                subtitle="Your Wish, Granted"
-                heroImage="/images/hotel_lobby.png"
-                description="Our dedicated lifestyle managers are at your service 24/7. From last-minute restaurant reservations to sourcing rare gifts, we handle the details so you can enjoy the journey."
-                features={[
-                  { title: "24/7 Support", desc: "Always available" },
-                  { title: "Dining", desc: "Priority reservations" },
-                  { title: "Events", desc: "VIP tickets & access" },
-                  { title: "Logistics", desc: "Seamless transfers" }
-                ]}
-              />
-            } />
-            <Route path="/contact" element={<ContactPage />} />
-            <Route path="/login" element={<LoginPage />} />
-            <Route path="/careers" element={<GenericPage title="Careers" subtitle="Join Our Team" image="/images/amalfi_scenic.png" />} />
-            <Route path="/press" element={<GenericPage title="Press" subtitle="News & Media" image="/images/swiss_alps.png" />} />
-            <Route path="/support" element={<GenericPage title="Support" subtitle="We're Here to Help" image="/images/amalfi_scenic.png" />} />
-          </Routes>
+              <Route path="/plan-trip" element={<PlanTripPage />} />
+              <Route path="/my-trips" element={<MyTripsPage />} />
+              <Route path="/account" element={<UserAccountPage />} />
+              <Route path="/guides" element={<GuidesListingPage />} />
+              <Route path="/offers" element={<SeasonalOffersPage />} />
+
+              <Route path="/gallery" element={<GalleryPage />} />
+              <Route path="/private-jets" element={
+                <ServicePage
+                  title="Private Aviation"
+                  subtitle="Fly on Your Terms"
+                  heroImage="/images/private_jet.png"
+                  description="Bypass long lines and commercial terminals. Experience the ultimate freedom of private aviation with our fleet of long-range jets, tailored catering, and seamless ground transport."
+                  features={[
+                    { title: "Global Reach", desc: "Access to 5,000+ airports" },
+                    { title: "On-Demand", desc: "Ready in as little as 4 hours" },
+                    { title: "Pet Friendly", desc: "Bring your companions" },
+                    { title: "Privacy", desc: "Discrete terminals & lounges" }
+                  ]}
+                />
+              } />
+              <Route path="/villas" element={
+                <ServicePage
+                  title="Luxury Villas"
+                  subtitle="Your Private Sanctuary"
+                  heroImage="/images/villa_mansion.png"
+                  description="From clifftop estates in Amalfi to beachfront mansions in Turks & Caicos. Our portfolio of private villas offers the space, privacy, and amenities of a five-star resort, exclusively for you."
+                  features={[
+                    { title: "Private Staff", desc: "Chefs, butlers, & housekeeping" },
+                    { title: "Exclusive Access", desc: "Beaches & golf courses" },
+                    { title: "Concierge", desc: "24/7 Itinerary planning" },
+                    { title: "Design", desc: "Award-winning architecture" }
+                  ]}
+                />
+              } />
+              <Route path="/experiences" element={
+                <ServicePage
+                  title="Curated Experiences"
+                  subtitle="Memories for a Lifetime"
+                  heroImage="/images/yacht.png"
+                  description="Go beyond the guidebook. Whether it's a private after-hours tour of the Vatican, shark diving in South Africa, or truffle hunting in Piedmont, we unlock the world's most exclusive moments."
+                  features={[
+                    { title: "Access", desc: "Behind closed doors" },
+                    { title: "Guides", desc: "Local experts & historians" },
+                    { title: "Adventure", desc: "Custom expeditions" },
+                    { title: "Culture", desc: "Immersive workshops" }
+                  ]}
+                />
+              } />
+              <Route path="/concierge" element={
+                <ServicePage
+                  title="Global Concierge"
+                  subtitle="Your Wish, Granted"
+                  heroImage="/images/hotel_lobby.png"
+                  description="Our dedicated lifestyle managers are at your service 24/7. From last-minute restaurant reservations to sourcing rare gifts, we handle the details so you can enjoy the journey."
+                  features={[
+                    { title: "24/7 Support", desc: "Always available" },
+                    { title: "Dining", desc: "Priority reservations" },
+                    { title: "Events", desc: "VIP tickets & access" },
+                    { title: "Logistics", desc: "Seamless transfers" }
+                  ]}
+                />
+              } />
+              <Route path="/contact" element={<ContactPage />} />
+              <Route path="/login" element={<LoginPage />} />
+              <Route path="/careers" element={<GenericPage title="Careers" subtitle="Join Our Team" image="/images/amalfi_scenic.png" />} />
+              <Route path="/press" element={<GenericPage title="Press" subtitle="News & Media" image="/images/swiss_alps.png" />} />
+              <Route path="/support" element={<GenericPage title="Support" subtitle="We're Here to Help" image="/images/amalfi_scenic.png" />} />
+            </Routes>
+          </Suspense>
 
           <Footer />
         </div>

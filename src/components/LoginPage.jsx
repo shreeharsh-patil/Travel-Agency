@@ -13,7 +13,8 @@ export default function LoginPage() {
 
     // Restore an existing session on page load by validating the stored token.
     useEffect(() => {
-        const token = localStorage.getItem('ht_token');
+        // Migrate legacy session keys to the single horizon_token used app-wide.
+        const token = localStorage.getItem('horizon_token') || localStorage.getItem('ht_token');
         if (!token) return;
         fetch('/api/auth/me', {
             headers: { Authorization: `Bearer ${token}` }
@@ -24,6 +25,8 @@ export default function LoginPage() {
                 setLoggedIn(true);
             })
             .catch(() => {
+                localStorage.removeItem('horizon_token');
+                localStorage.removeItem('horizon_user_email');
                 localStorage.removeItem('ht_token');
                 localStorage.removeItem('ht_user');
             });
@@ -61,8 +64,8 @@ export default function LoginPage() {
             if (!res.ok) {
                 throw new Error(data.error || 'Something went wrong. Please try again.');
             }
-            localStorage.setItem('ht_token', data.token);
-            localStorage.setItem('ht_user', JSON.stringify({ email: data.user.email }));
+            localStorage.removeItem('ht_token');
+            localStorage.removeItem('ht_user');
             localStorage.setItem('horizon_token', data.token);
             localStorage.setItem('horizon_user_email', data.user.email);
             setLoggedIn(true);
@@ -103,6 +106,8 @@ export default function LoginPage() {
                         </Link>
                         <button
                             onClick={() => {
+                                localStorage.removeItem('horizon_token');
+                                localStorage.removeItem('horizon_user_email');
                                 localStorage.removeItem('ht_token');
                                 localStorage.removeItem('ht_user');
                                 setLoggedIn(false);
