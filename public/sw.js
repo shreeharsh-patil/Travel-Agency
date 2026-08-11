@@ -35,8 +35,10 @@ self.addEventListener('fetch', (event) => {
         (cached) =>
           cached ||
           fetch(request).then((res) => {
-            const copy = res.clone();
-            caches.open(CACHE).then((cache) => cache.put(request, copy));
+            if (res.ok) {
+              const copy = res.clone();
+              caches.open(CACHE).then((cache) => cache.put(request, copy));
+            }
             return res;
           })
       )
@@ -48,8 +50,10 @@ self.addEventListener('fetch', (event) => {
   event.respondWith(
     fetch(request)
       .then((res) => {
-        const copy = res.clone();
-        caches.open(CACHE).then((cache) => cache.put(request, copy));
+        if (res.ok) {
+          const copy = res.clone();
+          caches.open(CACHE).then((cache) => cache.put(request, copy));
+        }
         return res;
       })
       .catch(async () => {

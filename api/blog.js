@@ -40,8 +40,9 @@ export default async function handler(req, res) {
       let posts = await cursor.sort({ created_at: -1 }).toArray();
 
       // Seed the journal with the curated stories the first time the
-      // collection is empty, so the page never looks bare.
-      if (posts.length === 0 && admin !== 'true') {
+      // collection is empty, so neither the public page nor the admin
+      // dashboard ever looks bare.
+      if (posts.length === 0) {
         for (const article of blogData) {
           await blogColl.insertOne({
             title: article.title,

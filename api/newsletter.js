@@ -1,4 +1,5 @@
 import { connectToDatabase, COLLECTIONS } from '../lib/db.js';
+import { getTokenFromReq, verifyToken } from '../lib/auth.js';
 
 /**
  * Newsletter API
@@ -45,8 +46,19 @@ export default async function handler(req, res) {
     }
   }
 
-  // GET: list subscribers (used by the admin dashboard)
+  // GET: list subscribers (admin dashboard). Requires a valid session so
+  // subscriber emails — PII — can't be harvested anonymously.
   if (req.method === 'GET') {
+    const token = getTokenFromReq(req);
+    if (!token) {
+      return res.status(401).json({ error: 'Not authenticated.' });
+    }
+    try {
+      verifyToken(token);
+    } catch {
+      return res.status(401).json({ error: 'Invalid session.' });
+    }
+
     try {
       const cursor = await subsColl.find({});
       const subscribers = await cursor.sort({ createdAt: -1 }).toArray();

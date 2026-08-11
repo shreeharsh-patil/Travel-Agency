@@ -171,7 +171,7 @@ export default function AdminDashboardPage() {
         'Content-Type': 'application/json',
         ...(token ? { Authorization: `Bearer ${token}` } : {})
       };
-      const url = editingPostId ? '/api/blog' : '/api/blog';
+      const url = '/api/blog';
       const method = editingPostId ? 'PATCH' : 'POST';
       const body = editingPostId ? { id: editingPostId, ...postForm } : postForm;
 

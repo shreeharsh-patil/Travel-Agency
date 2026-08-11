@@ -26,8 +26,10 @@ export default async function handler(req, res) {
   const { name, phone, avatar, preferences } = req.body || {};
   const update = { updatedAt: new Date() };
 
-  if (name !== undefined) update.name = String(name).trim().slice(0, 80);
-  if (phone !== undefined) update.phone = String(phone).trim().slice(0, 30);
+  // Blank name/phone are ignored so a stale empty form never wipes a
+  // previously saved value; avatar can be cleared explicitly.
+  if (name !== undefined && String(name).trim() !== '') update.name = String(name).trim().slice(0, 80);
+  if (phone !== undefined && String(phone).trim() !== '') update.phone = String(phone).trim().slice(0, 30);
   if (avatar !== undefined) update.avatar = String(avatar).trim().slice(0, 500);
   if (preferences !== undefined && preferences && typeof preferences === 'object') {
     update.preferences = preferences;

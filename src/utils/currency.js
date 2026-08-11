@@ -12,9 +12,10 @@ export function formatINR(amount) {
   
   let num = amount;
   if (typeof amount === 'string') {
-    // Extract numeric digits
-    const cleaned = amount.replace(/[^0-9.]/g, '');
-    num = parseFloat(cleaned);
+    // Extract the first numeric value (handles symbols, commas and words).
+    const match = String(amount).replace(/,/g, '').match(/\d+(\.\d+)?/);
+    if (!match) return amount;
+    num = parseFloat(match[0]);
     if (isNaN(num)) return amount;
   }
 
