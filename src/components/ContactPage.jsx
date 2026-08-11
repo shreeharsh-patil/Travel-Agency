@@ -8,12 +8,29 @@ export default function ContactPage() {
         subject: '',
         message: ''
     });
+    const [status, setStatus] = useState('idle'); // idle | submitting | success | error
+    const [errorMsg, setErrorMsg] = useState('');
 
-    const handleSubmit = (e) => {
+    const handleSubmit = async (e) => {
         e.preventDefault();
-        // Handle submission logic here
-        alert("Thank you for your message. We will be in touch shortly.");
-        setFormData({ name: '', email: '', subject: '', message: '' });
+        setStatus('submitting');
+        setErrorMsg('');
+        try {
+            const res = await fetch('/api/contact', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(formData)
+            });
+            const data = await res.json().catch(() => ({}));
+            if (!res.ok) {
+                throw new Error(data.error || 'Could not send your message.');
+            }
+            setStatus('success');
+            setFormData({ name: '', email: '', subject: '', message: '' });
+        } catch (err) {
+            setStatus('error');
+            setErrorMsg(err.message);
+        }
     };
 
     const handleChange = (e) => {
@@ -123,10 +140,22 @@ export default function ContactPage() {
 
                         <button
                             type="submit"
-                            className="w-full bg-white text-black font-sans font-bold uppercase tracking-widest py-4 rounded-full hover:bg-brand-gold transition-colors mt-4"
+                            disabled={status === 'submitting'}
+                            className="w-full bg-white text-black font-sans font-bold uppercase tracking-widest py-4 rounded-full hover:bg-brand-gold transition-colors mt-4 disabled:opacity-60 disabled:cursor-not-allowed"
                         >
-                            Send Message
+                            {status === 'submitting' ? 'Sending…' : 'Send Message'}
                         </button>
+
+                        {status === 'success' && (
+                            <p className="font-sans text-sm text-brand-gold text-center mt-4">
+                                Thank you for your message. We will be in touch shortly.
+                            </p>
+                        )}
+                        {status === 'error' && (
+                            <p className="font-sans text-sm text-red-400 text-center mt-4">
+                                {errorMsg}
+                            </p>
+                        )}
                     </form>
                 </div>
             </div>

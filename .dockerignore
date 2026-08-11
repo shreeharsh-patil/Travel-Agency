@@ -1,0 +1,12 @@
+node_modules
+dist
+server/node_modules
+.data
+data
+.git
+.gitignore
+*.md
+deploy.zip
+.env
+.env.*
+!.env.example

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { Link } from 'react-router-dom';
 
@@ -9,13 +9,32 @@ export default function LoginPage() {
     const [error, setError] = useState('');
     const [loading, setLoading] = useState(false);
     const [loggedIn, setLoggedIn] = useState(false);
+    const [mode, setMode] = useState('login'); // login | signup
+
+    // Restore an existing session on page load by validating the stored token.
+    useEffect(() => {
+        const token = localStorage.getItem('ht_token');
+        if (!token) return;
+        fetch('/api/auth/me', {
+            headers: { Authorization: `Bearer ${token}` }
+        })
+            .then((r) => (r.ok ? r.json() : Promise.reject(new Error('Session expired'))))
+            .then((data) => {
+                setFormData((prev) => ({ ...prev, email: data.user.email }));
+                setLoggedIn(true);
+            })
+            .catch(() => {
+                localStorage.removeItem('ht_token');
+                localStorage.removeItem('ht_user');
+            });
+    }, []);
 
     const handleChange = (e) => {
         setFormData(prev => ({ ...prev, [e.target.name]: e.target.value }));
         setError('');
     };
 
-    const handleSubmit = (e) => {
+    const handleSubmit = async (e) => {
         e.preventDefault();
         if (!formData.email || !formData.password) {
             setError('Please enter both your email and password.');
@@ -25,13 +44,39 @@ export default function LoginPage() {
             setError('Please enter a valid email address.');
             return;
         }
+        if (mode === 'signup' && formData.password.length < 6) {
+            setError('Password must be at least 6 characters.');
+            return;
+        }
+
         setLoading(true);
         setError('');
-        setTimeout(() => {
-            localStorage.setItem('ht_user', JSON.stringify({ email: formData.email }));
-            setLoading(false);
+        try {
+            const res = await fetch(`/api/auth/${mode}`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ email: formData.email, password: formData.password })
+            });
+            const data = await res.json().catch(() => ({}));
+            if (!res.ok) {
+                throw new Error(data.error || 'Something went wrong. Please try again.');
+            }
+            localStorage.setItem('ht_token', data.token);
+            localStorage.setItem('ht_user', JSON.stringify({ email: data.user.email }));
+            localStorage.setItem('horizon_token', data.token);
+            localStorage.setItem('horizon_user_email', data.user.email);
             setLoggedIn(true);
-        }, 800);
+        } catch (err) {
+            setError(err.message);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+
+    const switchMode = () => {
+        setMode((m) => (m === 'login' ? 'signup' : 'login'));
+        setError('');
     };
 
     if (loggedIn) {
@@ -58,6 +103,7 @@ export default function LoginPage() {
                         </Link>
                         <button
                             onClick={() => {
+                                localStorage.removeItem('ht_token');
                                 localStorage.removeItem('ht_user');
                                 setLoggedIn(false);
                             }}
@@ -102,9 +148,13 @@ export default function LoginPage() {
                         className="w-full max-w-md"
                     >
                         <p className="font-sans text-brand-gold text-sm tracking-[0.3em] uppercase mb-4">Member Access</p>
-                        <h1 className="font-serif text-4xl md:text-5xl mb-4">Login</h1>
+                        <h1 className="font-serif text-4xl md:text-5xl mb-4">
+                            {mode === 'login' ? 'Login' : 'Create Account'}
+                        </h1>
                         <p className="font-sans text-white/60 mb-10">
-                            Welcome back. Please enter your details.
+                            {mode === 'login'
+                                ? 'Welcome back. Please enter your details.'
+                                : 'Join Horizon Travels. Book in minutes.'}
                         </p>
 
                         <form onSubmit={handleSubmit} className="space-y-8">
@@ -177,7 +227,11 @@ export default function LoginPage() {
                                 disabled={loading}
                                 className="w-full bg-white text-black font-sans font-bold uppercase tracking-widest py-4 rounded-full hover:bg-brand-gold transition-colors disabled:opacity-60"
                             >
-                                {loading ? 'Signing in...' : 'Sign In'}
+                                {loading
+                                    ? 'Please wait…'
+                                    : mode === 'login'
+                                    ? 'Sign In'
+                                    : 'Create Account'}
                             </button>
                         </form>
 
@@ -212,10 +266,29 @@ export default function LoginPage() {
                         </div>
 
                         <p className="text-center font-sans text-sm text-white/50">
-                            New to Horizon Travels?{' '}
-                            <Link to="/contact" className="text-brand-gold hover:text-white transition-colors font-semibold">
-                                Contact our team
-                            </Link>
+                            {mode === 'login' ? (
+                                <>
+                                    New to Horizon Travels?{' '}
+                                    <button
+                                        type="button"
+                                        onClick={switchMode}
+                                        className="text-brand-gold hover:text-white transition-colors font-semibold"
+                                    >
+                                        Create an account
+                                    </button>
+                                </>
+                            ) : (
+                                <>
+                                    Already have an account?{' '}
+                                    <button
+                                        type="button"
+                                        onClick={switchMode}
+                                        className="text-brand-gold hover:text-white transition-colors font-semibold"
+                                    >
+                                        Sign in
+                                    </button>
+                                </>
+                            )}
                         </p>
                     </motion.div>
                 </div>

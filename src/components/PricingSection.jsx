@@ -2,27 +2,28 @@ export default function PricingSection() {
     const cards = [
         {
             title: "The Ocean Villas",
-            price: "From $1,200 / Night",
+            price: "From ₹35,000 / Night",
             description: "Overwater sanctuaries with private infinity pools and direct lagoon access.",
             image: "/images/ubud.png",
             dark: false
         },
         {
             title: "The Beach Residence",
-            price: "From $2,500 / Night",
+            price: "From ₹75,000 / Night",
             description: "Sprawling beachfront estates surrounded by lush tropical gardens.",
             image: "/images/mykonos.png",
             dark: true
         },
         {
             title: "The Royal Estate",
-            price: "Inquire for Pricing",
+            price: "Inquire for Pricing (INR)",
             description: "The crown jewel of the island. 5 bedrooms, private chef, and yacht access.",
             image: "/images/villa_mansion.png",
             dark: false,
             accent: true
         }
     ];
+
 
     return (
         <section className="relative z-10 w-full bg-[#0c0c0c] py-20 px-4 md:px-10">

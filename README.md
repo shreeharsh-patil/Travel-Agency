@@ -20,6 +20,7 @@ A premium, high-fidelity luxury travel agency web application built with **React
 *   **Frontend**: React 18+ (Vite)
 *   **Animations**: GSAP (ScrollTrigger), Framer Motion, Lenis (Smooth Scroll)
 *   **Styling**: Modern CSS / Tailwind CSS v4
+*   **Database**: MongoDB Atlas (serverless API routes)
 *   **Imagery**: Custom-generated 8K luxury assets
 
 ---
@@ -28,22 +29,68 @@ A premium, high-fidelity luxury travel agency web application built with **React
 
 ### 1. Clone the repository
 
-```bash id="6m2tq9"
+```bash
 git clone https://github.com/shreeharsh-patil/Travel-Agency.git
 cd Travel-Agency
 ```
 
 ### 2. Install dependencies
 
-```bash id="r6c4gx"
+```bash
 npm install
 ```
 
 ### 3. Run the development server
 
-```bash id="qk2y4h"
+```bash
 npm run dev
 ```
+
+---
+
+## 🗄️ MongoDB Atlas Database
+
+Reservations, contact messages, user accounts, and the gallery are stored in **MongoDB Atlas** through serverless API routes (`/api/*`).
+
+### 1. Create a free cluster
+
+1. Sign up at [mongodb.com/cloud/atlas](https://www.mongodb.com/cloud/atlas) and create a free **M0** cluster.
+2. Create a **database user** and add your IP (or `0.0.0.0/0` for local dev) to the **Network Access** allow list.
+3. Click **Connect → Drivers**, copy the connection string, and replace `<db_user>` / `<db_password>`.
+
+### 2. Configure environment
+
+```bash
+cp .env.example .env
+```
+
+Fill in `MONGODB_URI`, then set a `JWT_SECRET` (generate one with `node -e "console.log(require('crypto').randomBytes(48).toString('hex'))"`).
+
+### 3. Run locally
+
+```bash
+npm run dev      # starts Vite (web) + the Express API on :3001
+npm run seed     # seeds the gallery collection from the bundled images
+```
+
+Without a `MONGODB_URI`, the API automatically falls back to a local JSON database in `.data/` so the site keeps working offline.
+
+### 4. Deploy
+
+*   **Vercel**: add `MONGODB_URI` and `JWT_SECRET` in *Project → Settings → Environment Variables*. The `api/` folder deploys as serverless functions automatically.
+*   **Netlify**: add the same variables in *Site configuration → Environment variables*. The `netlify/functions/api.js` catch-all serves `/api/*`.
+*   **GitHub Pages**: serves the static site only — API calls gracefully fall back to the bundled data / demo mode.
+
+### API endpoints
+
+| Method | Route | Purpose |
+| --- | --- | --- |
+| POST | `/api/reservations` | Save a booking |
+| POST | `/api/contact` | Save a contact message |
+| GET / POST | `/api/images` | List / add gallery images |
+| POST | `/api/auth/signup` | Create an account |
+| POST | `/api/auth/login` | Sign in (returns a JWT) |
+| GET | `/api/auth/me` | Validate a stored session |
 
 ---
 
@@ -59,7 +106,7 @@ http://localhost:5173
 
 ## 📁 Project Structure
 
-```id="5r1sdt"
+```
 Travel-Agency/
 ├── public/
 │   ├── images/          # 8K High-fidelity generated assets
@@ -71,6 +118,9 @@ Travel-Agency/
 │   ├── hooks/           # Custom React hooks (useCanvasVideo)
 │   ├── App.jsx          # Route management
 │   └── main.jsx
+├── api/                 # Serverless functions (Vercel / Netlify / Express)
+├── lib/                 # Shared DB + auth helpers
+├── netlify/functions/   # Netlify catch-all API function
 ├── package.json
 ├── vite.config.js
 └── .gitignore

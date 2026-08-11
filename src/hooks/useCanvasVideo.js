@@ -1,8 +1,8 @@
 import { useEffect, useState, useRef } from 'react';
 
 export function useCanvasVideo(canvasRef, frameCount = 278) {
-    const [images, setImages] = useState([]);
     const [loadedCount, setLoadedCount] = useState(0);
+
 
     // Constants for correct path resolution
     // Vite serves public/ folder at root

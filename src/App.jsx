@@ -1,18 +1,25 @@
-import { ReactLenis } from '@studio-freight/react-lenis'
+import { ReactLenis } from '@studio-freight/react-lenis';
 import { useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, useLocation } from 'react-router-dom';
 import Header from './components/Header';
-import HeroCanvas from './components/HeroCanvas';
-import PricingSection from './components/PricingSection';
 import Footer from './components/Footer';
 import GenericPage from './components/GenericPage';
 import TravelPage from './components/TravelPage';
 import ServicePage from './components/ServicePage';
 import HomePage from './components/HomePage';
-import GalleryPage from './components/GalleryPage'; // Added GalleryPage import
-import ContactPage from './components/ContactPage'; // Added ContactPage import
-import LoginPage from './components/LoginPage'; // Added LoginPage import
-import JournalPage from './components/JournalPage'; // Added JournalPage import
+import GalleryPage from './components/GalleryPage';
+import ContactPage from './components/ContactPage';
+import LoginPage from './components/LoginPage';
+import JournalPage from './components/JournalPage';
+import PlaceDetailPage from './components/PlaceDetailPage';
+import SuggestPlacePage from './components/SuggestPlacePage';
+import FavoritesPage from './components/FavoritesPage';
+import AdminDashboardPage from './components/AdminDashboardPage';
+import PlanTripPage from './components/PlanTripPage';
+import MyTripsPage from './components/MyTripsPage';
+import UserAccountPage from './components/UserAccountPage';
+import GuidesListingPage from './components/GuidesListingPage';
+import SeasonalOffersPage from './components/SeasonalOffersPage';
 
 function ScrollToTop() {
   const { pathname } = useLocation();
@@ -32,17 +39,32 @@ function App() {
   return (
     <ReactLenis root options={lenisOptions}>
       <Router>
-        <div className="bg-[#0c0c0c] min-h-screen text-white selection:bg-white selection:text-black font-sans">
+        <div className="bg-[#0c0c0c] min-h-screen text-white selection:bg-white selection:text-black font-sans relative">
           <Header />
           <ScrollToTop />
 
           <Routes>
             <Route path="/" element={<HomePage />} />
-            <Route path="/journal" element={<JournalPage />} /> {/* Added JournalPage route */}
+            <Route path="/journal" element={<JournalPage />} />
             <Route path="/about" element={<GenericPage title="About Us" subtitle="Our Story" image="/images/swiss_alps.png" />} />
             <Route path="/dates" element={<GenericPage title="Availability" subtitle="Plan Your Stay" image="/images/tropical_beach.png" />} />
             <Route path="/travel" element={<TravelPage />} />
-            <Route path="/gallery" element={<GalleryPage />} /> {/* Changed to GalleryPage */}
+            
+            {/* Real Data Platform Routes */}
+            <Route path="/places/:slug" element={<PlaceDetailPage />} />
+            <Route path="/destinations/:slug" element={<PlaceDetailPage />} />
+            <Route path="/suggest-place" element={<SuggestPlacePage />} />
+            <Route path="/favorites" element={<FavoritesPage />} />
+            <Route path="/account/saved" element={<FavoritesPage />} />
+            <Route path="/admin" element={<AdminDashboardPage />} />
+
+            <Route path="/plan-trip" element={<PlanTripPage />} />
+            <Route path="/my-trips" element={<MyTripsPage />} />
+            <Route path="/account" element={<UserAccountPage />} />
+            <Route path="/guides" element={<GuidesListingPage />} />
+            <Route path="/offers" element={<SeasonalOffersPage />} />
+
+            <Route path="/gallery" element={<GalleryPage />} />
             <Route path="/private-jets" element={
               <ServicePage
                 title="Private Aviation"
@@ -99,8 +121,8 @@ function App() {
                 ]}
               />
             } />
-            <Route path="/contact" element={<ContactPage />} /> {/* Changed to ContactPage */}
-            <Route path="/login" element={<LoginPage />} /> {/* Added LoginPage route */}
+            <Route path="/contact" element={<ContactPage />} />
+            <Route path="/login" element={<LoginPage />} />
             <Route path="/careers" element={<GenericPage title="Careers" subtitle="Join Our Team" image="/images/amalfi_scenic.png" />} />
             <Route path="/press" element={<GenericPage title="Press" subtitle="News & Media" image="/images/swiss_alps.png" />} />
             <Route path="/support" element={<GenericPage title="Support" subtitle="We're Here to Help" image="/images/amalfi_scenic.png" />} />
@@ -110,7 +132,7 @@ function App() {
         </div>
       </Router>
     </ReactLenis>
-  )
+  );
 }
 
-export default App
+export default App;

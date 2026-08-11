@@ -1,11 +1,10 @@
-
 export const bentoCards = [
     {
         id: "santorini",
         title: "Santorini Dreams",
         subtitle: "Mediterranean luxury awaits",
         videoPath: "/videos/santorini-hero.mp4",
-        stats: "From $4,500 | 7 nights",
+        stats: "From ₹1,25,000 | 7 nights",
         size: "large",
         description: "Experience the golden hour over the caldera.",
     },
@@ -14,7 +13,7 @@ export const bentoCards = [
         title: "Tropical Paradise",
         subtitle: "Island escapes",
         videoPath: "/videos/tropical-sunset-palms.mp4",
-        stats: "From $3,200 | 5 nights",
+        stats: "From ₹85,000 | 5 nights",
         size: "medium",
         description: "Relax with palm silhouettes and ocean breezes.",
     },
@@ -23,7 +22,7 @@ export const bentoCards = [
         title: "First-Class Journey",
         subtitle: "Fly in style",
         videoPath: "/videos/champagne-bubbles.mp4",
-        stats: "Upgrade from $1,200",
+        stats: "Upgrade from ₹35,000",
         size: "medium",
         description: "Sip champagne at 30,000 feet.",
     },

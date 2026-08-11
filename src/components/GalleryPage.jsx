@@ -1,9 +1,27 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { galleryData } from '../data/galleryData';
+import { galleryData as staticGalleryData } from '../data/galleryData';
 
 export default function GalleryPage() {
     const [selectedId, setSelectedId] = useState(null);
+    const [images, setImages] = useState(staticGalleryData);
+
+    // Load the gallery from MongoDB Atlas; fall back to the bundled
+    // images when the API is unavailable (e.g. GitHub Pages previews).
+    useEffect(() => {
+        let cancelled = false;
+        fetch('/api/images')
+            .then((r) => (r.ok ? r.json() : Promise.reject(new Error('API unavailable'))))
+            .then((data) => {
+                if (!cancelled && Array.isArray(data.images) && data.images.length > 0) {
+                    setImages(data.images);
+                }
+            })
+            .catch(() => {});
+        return () => {
+            cancelled = true;
+        };
+    }, []);
 
     return (
         <section className="min-h-screen bg-[#0c0c0c] text-white pt-32 pb-20 px-4 md:px-12">
@@ -18,7 +36,7 @@ export default function GalleryPage() {
                 </div>
 
                 <div className="columns-1 md:columns-2 lg:columns-3 gap-8 space-y-8">
-                    {galleryData.map((item) => (
+                    {images.map((item) => (
                         <motion.div
                             layoutId={`container-${item.id}`}
                             key={item.id}
@@ -47,7 +65,7 @@ export default function GalleryPage() {
                             className="fixed inset-0 z-[100] flex items-center justify-center bg-black/95 backdrop-blur-xl p-4 md:p-10"
                             onClick={() => setSelectedId(null)}
                         >
-                            {galleryData.map((item) => {
+                            {images.map((item) => {
                                 if (item.id === selectedId) {
                                     return (
                                         <motion.div
