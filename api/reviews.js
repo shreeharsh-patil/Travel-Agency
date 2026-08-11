@@ -12,6 +12,7 @@ const INITIAL_AUTHENTIC_REVIEWS = [
     title: 'Absolute coastal luxury in Goa!',
     comment: 'The private villa in Panaji exceeded every expectation. Sunset catamaran cruise along the Mandovi river was the highlight of our trip!',
     status: 'APPROVED',
+    verified: true,
     created_at: '2026-08-01T10:00:00.000Z'
   },
   {
@@ -24,6 +25,7 @@ const INITIAL_AUTHENTIC_REVIEWS = [
     title: 'Magical Fontainhas heritage walk',
     comment: 'Exploring the Latin quarter with local historians was unforgettable. Michelin-caliber beachfront dining was top notch.',
     status: 'APPROVED',
+    verified: true,
     created_at: '2026-08-05T14:30:00.000Z'
   },
   {
@@ -36,6 +38,7 @@ const INITIAL_AUTHENTIC_REVIEWS = [
     title: 'Serene Machiya townhouse stay',
     comment: 'After-hours private temple access in Gion gave us a deep spiritual connection to Japanese Zen culture.',
     status: 'APPROVED',
+    verified: true,
     created_at: '2026-07-28T09:15:00.000Z'
   },
   {
@@ -48,6 +51,7 @@ const INITIAL_AUTHENTIC_REVIEWS = [
     title: 'Unmatched Tyrrhenian Sea cliffside vistas!',
     comment: 'Private Riva yacht charter across Capri was pure paradise. The infinity pool estate was breathtaking.',
     status: 'APPROVED',
+    verified: true,
     created_at: '2026-08-02T16:20:00.000Z'
   }
 ];
@@ -135,6 +139,24 @@ export default async function handler(req, res) {
 
     const numericRating = Math.min(5, Math.max(1, parseInt(rating, 10) || 5));
 
+    // Only allow http(s) image URLs or compressed data:image payloads —
+    // never javascript:/text/html schemes, and cap per-image byte size.
+    const MAX_IMAGE_BYTES = 600 * 1024;
+    const isSafeImage = (u) =>
+      typeof u === 'string' &&
+      (/^https?:\/\/\S+$/i.test(u.trim()) ||
+        /^data:image\/(png|jpe?g|webp);base64,[A-Za-z0-9+/=]+$/i.test(u.trim()));
+    const isWithinSize = (u) => {
+      const str = String(u);
+      if (!str.startsWith('data:image/')) return true;
+      const comma = str.indexOf(',');
+      const b64 = comma === -1 ? '' : str.slice(comma + 1);
+      return Math.floor((b64.length * 3) / 4) <= MAX_IMAGE_BYTES;
+    };
+    const sanitizedImages = Array.isArray(images)
+      ? images.filter(isSafeImage).map((u) => u.trim()).filter(isWithinSize).slice(0, 6)
+      : [];
+
     const existing = await reviewsColl.findOne({
       place_id,
       user_id: authUser.sub
@@ -155,7 +177,8 @@ export default async function handler(req, res) {
       rating: numericRating,
       title: String(title).trim(),
       comment: String(comment).trim(),
-      images: Array.isArray(images) ? images : [],
+      images: sanitizedImages,
+      verified: true,
       status: 'APPROVED',
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString()

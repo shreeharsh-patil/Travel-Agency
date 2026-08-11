@@ -3,13 +3,18 @@ import classNames from 'classnames';
 import { Link, useLocation } from 'react-router-dom';
 import { AnimatePresence, motion } from 'framer-motion';
 import GlobalSearchModal from './GlobalSearchModal';
+import { useCurrency } from '../contexts/CurrencyContext';
 
 export default function Header() {
     const [scrolled, setScrolled] = useState(false);
     const [showSearchModal, setShowSearchModal] = useState(false);
     const [menuOpen, setMenuOpen] = useState(false);
+    const [showCurrencyMenu, setShowCurrencyMenu] = useState(false);
     const [user, setUser] = useState(null);
     const location = useLocation();
+    const { currency, changeCurrency, currencies } = useCurrency();
+
+    const activeCurrency = currencies.find((c) => c.code === currency) || currencies[0];
 
     const checkUserSession = () => {
         const token = localStorage.getItem('horizon_token');
@@ -45,6 +50,7 @@ export default function Header() {
     const navItems = [
         { name: 'Home', path: '/' },
         { name: 'Travel', path: '/travel' },
+        { name: 'Trips', path: '/trips' },
         { name: 'Suggest Place', path: '/suggest-place' },
         { name: 'Saved', path: '/favorites' },
         { name: 'Contact', path: '/contact' }
@@ -93,8 +99,67 @@ export default function Header() {
                     </nav>
                 </div>
 
-                {/* Right Utilities: Search, Login, Reserve */}
+                {/* Right Utilities: Currency, Search, Login */}
                 <div className="flex items-center gap-2 sm:gap-3">
+                    {/* Currency Switcher */}
+                    <div className="relative">
+                        <button
+                            onClick={() => setShowCurrencyMenu((v) => !v)}
+                            className="flex items-center gap-1.5 bg-white/10 text-white px-2.5 sm:px-3 py-1.5 rounded-full text-xs font-mono border border-white/10 hover:bg-white/20 transition-colors"
+                            title="Switch currency"
+                            aria-label="Switch currency"
+                        >
+                            <span>{activeCurrency.symbol}</span>
+                            <span className="hidden sm:inline">{activeCurrency.code}</span>
+                            <span className="text-[8px] text-white/50">▾</span>
+                        </button>
+
+                        <AnimatePresence>
+                            {showCurrencyMenu && (
+                                <>
+                                    <div
+                                        className="fixed inset-0 z-40"
+                                        onClick={() => setShowCurrencyMenu(false)}
+                                    />
+                                    <motion.div
+                                        initial={{ opacity: 0, y: 8, scale: 0.96 }}
+                                        animate={{ opacity: 1, y: 0, scale: 1 }}
+                                        exit={{ opacity: 0, y: 8, scale: 0.96 }}
+                                        transition={{ duration: 0.15 }}
+                                        className="absolute right-0 top-full mt-2 z-50 w-52 bg-[#141417] border border-white/15 rounded-2xl overflow-hidden shadow-2xl"
+                                    >
+                                        <div className="px-4 py-2.5 border-b border-white/10 text-[9px] font-mono text-white/40 uppercase tracking-widest">
+                                            Display Currency
+                                        </div>
+                                        <div className="max-h-64 overflow-y-auto py-1">
+                                            {currencies.map((c) => (
+                                                <button
+                                                    key={c.code}
+                                                    onClick={() => {
+                                                        changeCurrency(c.code);
+                                                        setShowCurrencyMenu(false);
+                                                    }}
+                                                    className={`w-full flex items-center gap-3 px-4 py-2 text-left text-xs transition-colors ${
+                                                        c.code === currency
+                                                            ? 'bg-brand-gold/10 text-brand-gold font-bold'
+                                                            : 'text-white/70 hover:bg-white/5 hover:text-white'
+                                                    }`}
+                                                >
+                                                    <span className="w-6 text-center">{c.symbol}</span>
+                                                    <span className="flex-1">{c.code}</span>
+                                                    <span className="text-[9px] text-white/40">{c.label}</span>
+                                                </button>
+                                            ))}
+                                        </div>
+                                        <div className="px-4 py-2 border-t border-white/10 text-[9px] font-mono text-white/30">
+                                            Live rates via Frankfurter API
+                                        </div>
+                                    </motion.div>
+                                </>
+                            )}
+                        </AnimatePresence>
+                    </div>
+
                     {/* Search Trigger Button */}
                     <button
                         onClick={() => setShowSearchModal(true)}
@@ -216,7 +281,7 @@ export default function Header() {
                         </nav>
 
                         <div className="pb-8 text-center text-white/40 text-xs font-sans uppercase tracking-widest">
-                            Horizon Travels • INR Currency Standard (₹)
+                            Horizon Travels • Prices shown in {activeCurrency.code} ({activeCurrency.symbol})
                         </div>
                     </motion.div>
                 )}

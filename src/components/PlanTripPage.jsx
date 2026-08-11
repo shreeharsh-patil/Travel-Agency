@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate, Link } from 'react-router-dom';
 import { PlannerService } from '../services/trips/plannerService';
-import { formatINR } from '../services/currency/currencyService';
+import CurrencyPrice from './CurrencyPrice';
 
 export default function PlanTripPage() {
   const navigate = useNavigate();
@@ -181,7 +181,7 @@ export default function PlanTripPage() {
                     className="w-full accent-brand-gold"
                   />
                   <div className="text-center font-mono text-3xl text-brand-gold font-bold">
-                    {formatINR(wizardData.budgetINR)}
+                    <CurrencyPrice amount={wizardData.budgetINR} />
                   </div>
                 </div>
               </motion.div>

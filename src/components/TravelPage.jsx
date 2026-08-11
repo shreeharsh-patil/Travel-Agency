@@ -2,7 +2,10 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Link } from 'react-router-dom';
 import { destinations } from '../data/destinations';
+import { parseINR } from '../utils/currency';
 import ReservationForm from './ReservationForm';
+import CurrencyPrice from './CurrencyPrice';
+import { DestinationGridSkeleton } from './Skeletons';
 
 export default function TravelPage() {
     const [selectedDestination, setSelectedDestination] = useState(null);
@@ -108,10 +111,7 @@ export default function TravelPage() {
 
                 {/* Places Grid */}
                 {loading ? (
-                    <div className="py-20 text-center text-white/50 space-y-3">
-                        <div className="w-8 h-8 border-2 border-brand-gold border-t-transparent rounded-full animate-spin mx-auto" />
-                        <p className="text-xs font-mono uppercase tracking-widest">Loading Destinations...</p>
-                    </div>
+                    <DestinationGridSkeleton count={6} />
                 ) : filteredPlaces.length === 0 ? (
                     <div className="text-center py-20 bg-white/5 rounded-3xl border border-white/10 space-y-4">
                         <span className="text-4xl block">🏝️</span>
@@ -163,7 +163,7 @@ export default function TravelPage() {
                                         <div>
                                             <span className="text-[10px] uppercase font-mono text-white/40 block">From</span>
                                             <span className="text-brand-gold font-mono text-lg font-bold">
-                                                {dest.price || `₹${(dest.priceFrom || 35000).toLocaleString('en-IN')}`}
+                                                <CurrencyPrice amount={parseINR(dest.price) || dest.priceFrom || 35000} />
                                             </span>
                                         </div>
 

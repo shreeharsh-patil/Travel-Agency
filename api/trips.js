@@ -3,10 +3,12 @@ import { getTokenFromReq, verifyToken } from '../lib/auth.js';
 
 /**
  * Trip Itinerary API
- *  - POST   /api/trips            (auth) save a trip to the account, returns shareId
- *  - GET    /api/trips            (auth) list my trips
- *  - GET    /api/trips?share=ID   (public) fetch a shared trip by shareId
- *  - DELETE /api/trips?id=        (auth) delete one of my trips
+ *  - POST    /api/trips                (auth) save a trip to the account, returns shareId
+ *  - GET     /api/trips                (auth) list my trips
+ *  - GET     /api/trips?share=ID       (public) fetch a shared trip by shareId
+ *  - GET     /api/trips?public=1       (public) list published trips for the community gallery
+ *  - PATCH   /api/trips                (auth) toggle a trip's published flag
+ *  - DELETE  /api/trips?id=            (auth) delete one of my trips
  */
 
 function generateShareId() {
@@ -41,6 +43,7 @@ export default async function handler(req, res) {
       itineraryDays,
       interests,
       notes,
+      published = false,
     } = req.body || {};
 
     if (!destination) {
@@ -60,6 +63,7 @@ export default async function handler(req, res) {
       interests: Array.isArray(interests) ? interests : [],
       notes: notes || '',
       shareId: generateShareId(),
+      published: Boolean(published),
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
     };
@@ -76,9 +80,27 @@ export default async function handler(req, res) {
     }
   }
 
-  // GET: list my trips (auth) OR fetch a public shared trip (?share=SHAREID)
+  // GET: public gallery (?public=1), public shared trip (?share=ID), or my trips (auth)
   if (req.method === 'GET') {
-    const { share } = req.query || {};
+    const { share, public: publicList } = req.query || {};
+
+    // Public community gallery: all trips the owners chose to publish.
+    if (publicList) {
+      try {
+        // sort() then slice() — works on both Mongo cursors and the local fallback DB.
+        const cursor = await tripsColl.find({ published: true });
+        const trips = (await cursor.sort({ created_at: -1 }).toArray()).slice(0, 60);
+        const publicTrips = trips.map((t) => {
+          const { userId: _userId, userEmail, ...publicTrip } = t;
+          const travelerName = userEmail ? String(userEmail).split('@')[0] : 'Traveler';
+          return { ...publicTrip, userName: travelerName };
+        });
+        return res.status(200).json({ trips: publicTrips });
+      } catch (err) {
+        console.error('[GET /api/trips?public=1]', err);
+        return res.status(500).json({ error: 'Could not load public trips.' });
+      }
+    }
 
     if (share) {
       try {
@@ -115,6 +137,41 @@ export default async function handler(req, res) {
     } catch (err) {
       console.error('[GET /api/trips]', err);
       return res.status(500).json({ error: 'Could not load your trips.' });
+    }
+  }
+
+  // PATCH: toggle the published flag on one of my trips (auth)
+  if (req.method === 'PATCH') {
+    const { id, published } = req.body || {};
+
+    const token = getTokenFromReq(req);
+    if (!token) {
+      return res.status(401).json({ error: 'Please sign in.' });
+    }
+
+    let payload;
+    try {
+      payload = verifyToken(token);
+    } catch {
+      return res.status(401).json({ error: 'Invalid session. Please sign in again.' });
+    }
+
+    if (!id) {
+      return res.status(400).json({ error: 'Trip ID is required.' });
+    }
+
+    try {
+      const result = await tripsColl.updateOne(
+        { _id: id, userId: payload.sub },
+        { $set: { published: Boolean(published), updated_at: new Date().toISOString() } }
+      );
+      if (result.matchedCount === 0) {
+        return res.status(404).json({ error: 'Trip not found or not yours.' });
+      }
+      return res.status(200).json({ message: 'Trip visibility updated.', published: Boolean(published) });
+    } catch (err) {
+      console.error('[PATCH /api/trips]', err);
+      return res.status(500).json({ error: 'Could not update trip.' });
     }
   }
 

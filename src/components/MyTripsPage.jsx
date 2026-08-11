@@ -2,10 +2,12 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { motion } from 'framer-motion';
 import { Link, useSearchParams } from 'react-router-dom';
 import { PlannerService } from '../services/trips/plannerService';
+import CurrencyPrice from './CurrencyPrice';
 
-function TripCard({ trip, onDelete, _onShare, shared = false }) {
+function TripCard({ trip, onDelete, _onShare, shared = false, onTogglePublish }) {
 
   const [copied, setCopied] = useState(false);
+  const [publishing, setPublishing] = useState(false);
 
   const handleShare = async () => {
     if (!trip.shareId) return;
@@ -31,6 +33,35 @@ function TripCard({ trip, onDelete, _onShare, shared = false }) {
     } catch (err) {
       console.error('Copy link error:', err);
     }
+  };
+
+  // Social share helpers — open the platform composer with the share link.
+  const shareUrl = trip.shareId ? `${window.location.origin}/my-trips?share=${trip.shareId}` : '';
+  const shareText = `${trip.durationDays}-Day Escape to ${trip.destination} — planned with Horizon Travels ✈️`;
+
+  const socialLinks = [
+    {
+      label: 'WhatsApp',
+      href: `https://wa.me/?text=${encodeURIComponent(`${shareText} ${shareUrl}`)}`,
+      icon: '💬'
+    },
+    {
+      label: 'X',
+      href: `https://twitter.com/intent/tweet?text=${encodeURIComponent(shareText)}&url=${encodeURIComponent(shareUrl)}`,
+      icon: '𝕏'
+    },
+    {
+      label: 'Facebook',
+      href: `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(shareUrl)}`,
+      icon: '📘'
+    }
+  ];
+
+  const togglePublish = async () => {
+    if (!onTogglePublish || publishing) return;
+    setPublishing(true);
+    await onTogglePublish(trip, !trip.published);
+    setPublishing(false);
   };
 
   return (
@@ -60,11 +91,23 @@ function TripCard({ trip, onDelete, _onShare, shared = false }) {
             {trip.durationDays}-Day Escape to {trip.destination}
           </h3>
           <p className="text-white/50 text-xs font-mono mt-1">
-            Budget: {trip.formattedBudget} • Party: {trip.travelers}
+            Budget: <CurrencyPrice amount={trip.budgetINR || trip.formattedBudget} /> • Party: {trip.travelers}
           </p>
         </div>
 
         <div className="flex flex-wrap gap-2 shrink-0">
+          {trip.shareId && !shared && (
+            <button
+              onClick={togglePublish}
+              className={`px-4 py-2 rounded-full text-xs font-mono border transition-colors ${
+                trip.published
+                  ? 'bg-green-500/15 text-green-300 border-green-500/30 hover:bg-green-500 hover:text-white'
+                  : 'bg-white/10 text-white/80 border-white/15 hover:bg-brand-gold hover:text-black'
+              }`}
+            >
+              {publishing ? '...' : trip.published ? '✓ Published' : '★ Publish to Gallery'}
+            </button>
+          )}
           {trip.shareId && (
             <button
               onClick={handleShare}
@@ -100,7 +143,25 @@ function TripCard({ trip, onDelete, _onShare, shared = false }) {
         ))}
       </div>
 
-      <div className="flex flex-wrap justify-end gap-3 pt-2">
+      <div className="flex flex-wrap items-center justify-end gap-3 pt-2">
+        {/* Social share buttons */}
+        {trip.shareId && (
+          <div className="flex items-center gap-2 mr-auto">
+            <span className="text-[10px] font-mono text-white/40 uppercase tracking-widest mr-1">Share via</span>
+            {socialLinks.map((s) => (
+              <a
+                key={s.label}
+                href={s.href}
+                target="_blank"
+                rel="noreferrer"
+                title={`Share on ${s.label}`}
+                className="w-9 h-9 rounded-full bg-white/10 border border-white/15 flex items-center justify-center text-sm hover:bg-brand-gold hover:text-black hover:scale-110 transition-all"
+              >
+                {s.icon}
+              </a>
+            ))}
+          </div>
+        )}
         {shared && (
           <button
             onClick={handleShare}
@@ -186,6 +247,14 @@ export default function MyTripsPage() {
     if (!window.confirm('Delete this trip? This will remove it from your account too.')) return;
     await PlannerService.deleteTrip(trip.id, trip.serverId || trip._id);
     loadSavedTrips();
+  };
+
+  const togglePublish = async (trip, published) => {
+    const serverId = trip.serverId || trip._id;
+    const ok = await PlannerService.setTripPublished(serverId, published);
+    if (ok) {
+      loadSavedTrips();
+    }
   };
 
   // --- Shared trip read-only view ---
@@ -274,7 +343,7 @@ export default function MyTripsPage() {
         ) : (
           <div className="space-y-8">
             {savedTrips.map((trip) => (
-              <TripCard key={trip.id || trip._id} trip={trip} onDelete={deleteTrip} />
+              <TripCard key={trip.id || trip._id} trip={trip} onDelete={deleteTrip} onTogglePublish={togglePublish} />
             ))}
           </div>
         )}

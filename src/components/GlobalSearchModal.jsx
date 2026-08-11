@@ -1,8 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Link } from 'react-router-dom';
+import CurrencyPrice from './CurrencyPrice';
+import { useCurrency } from '../contexts/CurrencyContext';
 
 export default function GlobalSearchModal({ isOpen, onClose }) {
+  const { currency, currencies } = useCurrency();
+  const currencyMeta = currencies.find((c) => c.code === currency) || currencies[0];
   const [query, setQuery] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
@@ -186,7 +190,7 @@ export default function GlobalSearchModal({ isOpen, onClose }) {
                               {place.name}
                             </h6>
                             <p className="text-white/60 text-xs font-mono font-bold">
-                              {place.price}
+                              <CurrencyPrice amount={place.price} />
                             </p>
                           </div>
                         </Link>
@@ -244,7 +248,7 @@ export default function GlobalSearchModal({ isOpen, onClose }) {
                             <span className="text-brand-gold">🧳</span>
                             <span className="text-white font-medium">{pkg.title}</span>
                           </div>
-                          <span className="font-mono text-brand-gold font-bold">{pkg.price}</span>
+                          <span className="font-mono text-brand-gold font-bold"><CurrencyPrice amount={pkg.price} /></span>
                         </Link>
                       ))}
                     </div>
@@ -264,7 +268,7 @@ export default function GlobalSearchModal({ isOpen, onClose }) {
                             <div className="text-white font-semibold">{exp.title}</div>
                             <div className="text-white/50 text-[10px]">{exp.location}</div>
                           </div>
-                          <span className="font-mono text-brand-gold">{exp.price}</span>
+                          <span className="font-mono text-brand-gold"><CurrencyPrice amount={exp.price} /></span>
                         </div>
                       ))}
                     </div>
@@ -276,7 +280,7 @@ export default function GlobalSearchModal({ isOpen, onClose }) {
 
           {/* Footer Bar */}
           <div className="p-4 bg-black/40 border-t border-white/10 text-center text-xs text-white/50 font-mono">
-            Showing real-time results in INR (₹)
+            Showing real-time results in {currencyMeta.code} ({currencyMeta.symbol})
           </div>
         </motion.div>
       </motion.div>

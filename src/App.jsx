@@ -1,9 +1,11 @@
 import { ReactLenis } from '@studio-freight/react-lenis';
 import { useEffect, lazy, Suspense } from 'react';
 import { BrowserRouter as Router, Routes, Route, useLocation } from 'react-router-dom';
+import { CurrencyProvider } from './contexts/CurrencyContext';
 import Header from './components/Header';
 import Footer from './components/Footer';
 import GenericPage from './components/GenericPage';
+import NotFoundPage from './components/NotFoundPage';
 
 // Route-level code splitting — each page loads only when visited.
 const HomePage = lazy(() => import('./components/HomePage'));
@@ -22,6 +24,7 @@ const MyTripsPage = lazy(() => import('./components/MyTripsPage'));
 const UserAccountPage = lazy(() => import('./components/UserAccountPage'));
 const GuidesListingPage = lazy(() => import('./components/GuidesListingPage'));
 const SeasonalOffersPage = lazy(() => import('./components/SeasonalOffersPage'));
+const TripsGalleryPage = lazy(() => import('./components/TripsGalleryPage'));
 
 function PageLoader() {
   return (
@@ -49,9 +52,10 @@ function App() {
   return (
     <ReactLenis root options={lenisOptions}>
       <Router>
-        <div className="bg-[#0c0c0c] min-h-screen text-white selection:bg-white selection:text-black font-sans relative">
-          <Header />
-          <ScrollToTop />
+        <CurrencyProvider>
+          <div className="bg-[#0c0c0c] min-h-screen text-white selection:bg-white selection:text-black font-sans relative">
+            <Header />
+            <ScrollToTop />
 
           <Suspense fallback={<PageLoader />}>
             <Routes>
@@ -71,6 +75,7 @@ function App() {
 
               <Route path="/plan-trip" element={<PlanTripPage />} />
               <Route path="/my-trips" element={<MyTripsPage />} />
+              <Route path="/trips" element={<TripsGalleryPage />} />
               <Route path="/account" element={<UserAccountPage />} />
               <Route path="/guides" element={<GuidesListingPage />} />
               <Route path="/offers" element={<SeasonalOffersPage />} />
@@ -137,11 +142,15 @@ function App() {
               <Route path="/careers" element={<GenericPage title="Careers" subtitle="Join Our Team" image="/images/amalfi_scenic.png" />} />
               <Route path="/press" element={<GenericPage title="Press" subtitle="News & Media" image="/images/swiss_alps.png" />} />
               <Route path="/support" element={<GenericPage title="Support" subtitle="We're Here to Help" image="/images/amalfi_scenic.png" />} />
+
+              {/* Catch-all: custom 404 page */}
+              <Route path="*" element={<NotFoundPage />} />
             </Routes>
           </Suspense>
 
           <Footer />
-        </div>
+          </div>
+        </CurrencyProvider>
       </Router>
     </ReactLenis>
   );

@@ -1,7 +1,7 @@
 import React from 'react';
 import { motion } from 'framer-motion';
 import { Link } from 'react-router-dom';
-import { formatINR } from '../services/currency/currencyService';
+import CurrencyPrice from './CurrencyPrice';
 
 export default function SeasonalOffersPage() {
   const activeOffers = [
@@ -74,10 +74,10 @@ export default function SeasonalOffersPage() {
                 <div className="flex items-center justify-between pt-4 border-t border-white/10">
                   <div>
                     <span className="text-xs text-white/40 line-through font-mono block">
-                      {formatINR(offer.originalPrice)}
+                      <CurrencyPrice amount={offer.originalPrice} />
                     </span>
                     <span className="font-mono text-2xl text-brand-gold font-bold">
-                      {formatINR(offer.discountedPrice)}
+                      <CurrencyPrice amount={offer.discountedPrice} />
                     </span>
                   </div>
 

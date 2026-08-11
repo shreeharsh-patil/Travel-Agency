@@ -1,9 +1,12 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
+import { compressImageFile } from '../utils/imageCompression';
 import { useParams, Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import ReservationForm from './ReservationForm';
 import PlaceMap from './PlaceMap';
-import { formatINR } from '../utils/currency';
+import CurrencyPrice from './CurrencyPrice';
+import VisaChecker from './VisaChecker';
+import { PlaceDetailSkeleton } from './Skeletons';
 
 export default function PlaceDetailPage() {
   const { slug } = useParams();
@@ -18,15 +21,70 @@ export default function PlaceDetailPage() {
   const [sortReviews, setSortReviews] = useState('recent');
 
   // Review Form State
-  const [reviewForm, setReviewForm] = useState({ rating: 5, title: '', comment: '' });
+  const [reviewForm, setReviewForm] = useState({ rating: 5, title: '', comment: '', images: [] });
+  const [photoUrlInput, setPhotoUrlInput] = useState('');
+  const [photoUrlError, setPhotoUrlError] = useState('');
+  const [uploadingPhotos, setUploadingPhotos] = useState(false);
+  const [showUrlInput, setShowUrlInput] = useState(false);
+  const photoFileInputRef = useRef(null);
+
+  const handlePhotoFiles = async (e) => {
+    const files = Array.from(e.target.files || []);
+    e.target.value = ''; // allow re-selecting the same file later
+    if (files.length === 0) return;
+    setPhotoUrlError('');
+
+    // Safe to snapshot: the upload button is disabled while compressing, so
+    // no other interaction can mutate the images array concurrently.
+    const currentCount = (reviewForm.images || []).length;
+    const slots = Math.max(0, 6 - currentCount);
+    if (slots <= 0) {
+      setPhotoUrlError('Maximum 6 photos per review.');
+      return;
+    }
+
+    setUploadingPhotos(true);
+    try {
+      const compressed = [];
+      for (const file of files.slice(0, slots)) {
+        try {
+          const { dataUrl } = await compressImageFile(file);
+          compressed.push(dataUrl);
+        } catch (err) {
+          setPhotoUrlError(err.message || 'Could not process one of the photos.');
+        }
+      }
+      if (compressed.length > 0) {
+        // Functional update so in-flight edits to title/rating/comment are never clobbered.
+        setReviewForm((prev) => ({ ...prev, images: [...(prev.images || []), ...compressed] }));
+      }
+    } finally {
+      setUploadingPhotos(false);
+    }
+  };
+
+  const addPhotoUrl = () => {
+    const trimmed = photoUrlInput.trim();
+    setPhotoUrlError('');
+    if (!trimmed) return;
+    if (!/^https?:\/\/\S+$/i.test(trimmed)) {
+      setPhotoUrlError('Please enter a valid http(s) image URL.');
+      return;
+    }
+    if ((reviewForm.images || []).length >= 6) {
+      setPhotoUrlError('Maximum 6 photos per review.');
+      return;
+    }
+    if ((reviewForm.images || []).includes(trimmed)) {
+      setPhotoUrlError('That photo is already added.');
+      return;
+    }
+    setReviewForm({ ...reviewForm, images: [...(reviewForm.images || []), trimmed] });
+    setPhotoUrlInput('');
+  };
   const [reviewSubmitting, setReviewSubmitting] = useState(false);
   const [reviewError, setReviewError] = useState(null);
   const [reviewSuccess, setReviewSuccess] = useState(null);
-
-  useEffect(() => {
-    fetchPlaceAndReviews();
-    checkIsSaved();
-  }, [fetchPlaceAndReviews, checkIsSaved]);
 
   const [weatherData, setWeatherData] = useState(null);
   const [freeAttractions, setFreeAttractions] = useState([]);
@@ -40,6 +98,10 @@ export default function PlaceDetailPage() {
   const [commentSubmitting, setCommentSubmitting] = useState(false);
   const [commentError, setCommentError] = useState(null);
   const [commentSuccess, setCommentSuccess] = useState(null);
+  const [replyTarget, setReplyTarget] = useState(null);
+  const [replyText, setReplyText] = useState('');
+  const [replySubmitting, setReplySubmitting] = useState(false);
+  const [commentLikeBusy, setCommentLikeBusy] = useState({});
   const [expenseDays, setExpenseDays] = useState(4);
   const [expenseTravellers, setExpenseTravellers] = useState(2);
 
@@ -136,6 +198,11 @@ export default function PlaceDetailPage() {
     }
   }, [slug]);
 
+  useEffect(() => {
+    fetchPlaceAndReviews();
+    checkIsSaved();
+  }, [fetchPlaceAndReviews, checkIsSaved]);
+
   // Dedicated effect for expense estimator so slider changes don't reload the page
   useEffect(() => {
     if (!place) return;
@@ -202,7 +269,10 @@ export default function PlaceDetailPage() {
         },
         body: JSON.stringify({
           place_id: place.slug || place.id || slug,
-          ...reviewForm
+          rating: reviewForm.rating,
+          title: reviewForm.title,
+          comment: reviewForm.comment,
+          images: (reviewForm.images || []).filter(Boolean).slice(0, 6)
         })
       });
 
@@ -212,7 +282,9 @@ export default function PlaceDetailPage() {
       }
 
       setReviewSuccess('Your review has been submitted successfully!');
-      setReviewForm({ rating: 5, title: '', comment: '' });
+      setReviewForm({ rating: 5, title: '', comment: '', images: [] });
+      setPhotoUrlInput('');
+      setShowUrlInput(false);
       fetchPlaceAndReviews();
       setTimeout(() => setShowReviewModal(false), 1500);
     } catch (err) {
@@ -267,6 +339,91 @@ export default function PlaceDetailPage() {
     }
   };
 
+  // Like / unlike a comment (top-level or reply)
+  const toggleCommentLike = async (comment) => {
+    const token = localStorage.getItem('horizon_token');
+    if (!token) {
+      alert('Please log in to like comments.');
+      return;
+    }
+    if (commentLikeBusy[comment._id]) return;
+
+    setCommentLikeBusy((prev) => ({ ...prev, [comment._id]: true }));
+    try {
+      const res = await fetch('/api/comments', {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`
+        },
+        body: JSON.stringify({ id: comment._id, action: comment.likedByUser ? 'unlike' : 'like' })
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.error || 'Could not update like.');
+      }
+      const data = await res.json();
+
+      setComments((prev) => prev.map((root) => {
+        const updateNode = (node) => {
+          if (node._id === comment._id) {
+            return { ...node, likedByUser: data.liked, likeCount: data.likeCount };
+          }
+          return { ...node, replies: (node.replies || []).map(updateNode) };
+        };
+        return updateNode(root);
+      }));
+    } catch (err) {
+      console.error('Toggle comment like error:', err);
+    } finally {
+      setCommentLikeBusy((prev) => ({ ...prev, [comment._id]: false }));
+    }
+  };
+
+  // Submit a reply to a comment
+  const handleReplySubmit = async (parentComment) => {
+    const token = localStorage.getItem('horizon_token');
+    if (!token) {
+      alert('Please log in to reply to comments.');
+      return;
+    }
+    if (!replyText.trim()) return;
+
+    setReplySubmitting(true);
+    setCommentError(null);
+    try {
+      const res = await fetch('/api/comments', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          place_id: place.slug || place.id || slug,
+          text: replyText,
+          parent_id: parentComment._id
+        })
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error || 'Could not post reply.');
+      }
+
+      setComments((prev) => prev.map((root) => {
+        if (root._id === parentComment._id) {
+          return { ...root, replies: [data.comment, ...(root.replies || [])] };
+        }
+        return root;
+      }));
+      setReplyText('');
+      setReplyTarget(null);
+    } catch (err) {
+      setCommentError(err.message || 'Failed to post reply.');
+    } finally {
+      setReplySubmitting(false);
+    }
+  };
+
   const sortedReviews = [...reviews].sort((a, b) => {
     if (sortReviews === 'highest') return b.rating - a.rating;
     if (sortReviews === 'lowest') return a.rating - b.rating;
@@ -279,10 +436,9 @@ export default function PlaceDetailPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-[#0c0c0c] pt-40 pb-20 text-center text-white/60">
-        <div className="w-10 h-10 border-2 border-brand-gold border-t-transparent rounded-full animate-spin mx-auto mb-4" />
-        <p className="font-mono text-xs uppercase tracking-widest">Loading Place Details...</p>
-      </div>
+      <section className="min-h-screen w-full bg-[#0c0c0c] pt-28 pb-24 px-4 sm:px-8">
+        <PlaceDetailSkeleton />
+      </section>
     );
   }
 
@@ -361,7 +517,9 @@ export default function PlaceDetailPage() {
             <div className="bg-black/60 backdrop-blur-xl border border-white/10 p-5 rounded-3xl flex items-center gap-6 min-w-[260px]">
               <div>
                 <span className="text-[10px] font-mono text-white/40 uppercase block">Starting Package</span>
-                <span className="font-mono text-2xl text-brand-gold font-bold">{formatINR(place.priceFrom || 35000)}</span>
+                <span className="font-mono text-2xl text-brand-gold font-bold">
+                  <CurrencyPrice amount={place.priceFrom || 35000} />
+                </span>
               </div>
               <button
                 onClick={() => setShowReserveModal(true)}
@@ -606,7 +764,14 @@ export default function PlaceDetailPage() {
                             className="w-9 h-9 rounded-full bg-white/10 object-cover"
                           />
                           <div>
-                            <span className="text-sm font-semibold text-white block">{rev.user_name || 'Anonymous'}</span>
+                            <div className="flex items-center gap-2">
+                              <span className="text-sm font-semibold text-white block">{rev.user_name || 'Anonymous'}</span>
+                              {rev.verified && (
+                                <span className="text-[9px] font-mono text-brand-gold bg-brand-gold/10 border border-brand-gold/30 px-1.5 py-0.5 rounded-full font-bold whitespace-nowrap">
+                                  ✓ VERIFIED TRAVELER
+                                </span>
+                              )}
+                            </div>
                             <span className="text-[10px] text-white/40 font-mono">
                               {rev.created_at ? new Date(rev.created_at).toLocaleDateString() : 'Verified Stay'}
                             </span>
@@ -622,6 +787,23 @@ export default function PlaceDetailPage() {
                         <h5 className="font-semibold text-sm text-white mb-1">{rev.title}</h5>
                         <p className="text-white/70 text-xs leading-relaxed">{rev.comment}</p>
                       </div>
+
+                      {/* Review photos */}
+                      {rev.images && rev.images.length > 0 && (
+                        <div className="grid grid-cols-3 sm:grid-cols-4 gap-2 pt-1">
+                          {rev.images.filter((u) => typeof u === 'string' && (/^https?:\/\//i.test(u) || u.startsWith('data:image/'))).map((img, i) => (
+                            <a key={i} href={img} target="_blank" rel="noreferrer" className="block h-20 sm:h-24 rounded-xl overflow-hidden border border-white/10 group/img">
+                              <img
+                                src={img}
+                                alt={`${rev.user_name || 'Traveler'}'s review photo ${i + 1}`}
+                                loading="lazy"
+                                decoding="async"
+                                className="w-full h-full object-cover group-hover/img:scale-110 transition-transform duration-500"
+                              />
+                            </a>
+                          ))}
+                        </div>
+                      )}
                     </div>
                   ))}
                 </div>
@@ -651,7 +833,7 @@ export default function PlaceDetailPage() {
                   <p className="text-xs font-mono uppercase tracking-widest">No comments yet. Start the conversation!</p>
                 </div>
               ) : (
-                <div className="space-y-3">
+                <div className="space-y-4">
                   {comments.map((cmt) => (
                     <div key={cmt._id} className="p-4 rounded-2xl bg-white/5 border border-white/10 space-y-2">
                       <div className="flex justify-between items-start">
@@ -670,6 +852,80 @@ export default function PlaceDetailPage() {
                         </div>
                       </div>
                       <p className="text-white/80 text-xs leading-relaxed">{cmt.text}</p>
+
+                      {/* Comment Actions: Like + Reply */}
+                      <div className="flex items-center gap-4 pt-1">
+                        <button
+                          onClick={() => toggleCommentLike(cmt)}
+                          disabled={commentLikeBusy[cmt._id]}
+                          className={`flex items-center gap-1.5 text-[11px] font-mono transition-colors ${
+                            cmt.likedByUser ? 'text-brand-gold' : 'text-white/40 hover:text-white'
+                          }`}
+                        >
+                          <span>{cmt.likedByUser ? '♥' : '♡'}</span>
+                          <span>{cmt.likeCount || 0}</span>
+                        </button>
+                        <button
+                          onClick={() => setReplyTarget(replyTarget === cmt._id ? null : cmt._id)}
+                          className="text-[11px] font-mono text-white/40 hover:text-white transition-colors"
+                        >
+                          Reply
+                        </button>
+                      </div>
+
+                      {/* Inline Reply Form */}
+                      {replyTarget === cmt._id && (
+                        <div className="mt-2 flex gap-2">
+                          <input
+                            type="text"
+                            placeholder={`Reply to ${cmt.user_name}...`}
+                            value={replyText}
+                            onChange={(e) => setReplyText(e.target.value)}
+                            className="flex-1 bg-black/40 border border-white/10 rounded-xl px-3 py-2 text-white text-xs focus:border-brand-gold focus:outline-none"
+                          />
+                          <button
+                            onClick={() => handleReplySubmit(cmt)}
+                            disabled={replySubmitting}
+                            className="px-4 py-2 rounded-full bg-brand-gold text-black text-[11px] font-bold uppercase tracking-wider hover:bg-white transition-colors"
+                          >
+                            {replySubmitting ? '...' : 'Reply'}
+                          </button>
+                        </div>
+                      )}
+
+                      {/* Replies (one level deep) */}
+                      {cmt.replies && cmt.replies.length > 0 && (
+                        <div className="mt-3 space-y-2 border-l-2 border-white/10 pl-4">
+                          {cmt.replies.map((reply) => (
+                            <div key={reply._id} className="p-3 rounded-xl bg-black/30 border border-white/5 space-y-1.5">
+                              <div className="flex justify-between items-start">
+                                <div className="flex items-center gap-2">
+                                  <img
+                                    src={reply.user_avatar || 'https://api.dicebear.com/7.x/avataaars/svg?seed=User'}
+                                    alt={reply.user_name}
+                                    className="w-6 h-6 rounded-full bg-white/10 object-cover"
+                                  />
+                                  <span className="text-xs font-semibold text-white">{reply.user_name || 'Anonymous'}</span>
+                                  <span className="text-[9px] text-white/40 font-mono">
+                                    {reply.created_at ? new Date(reply.created_at).toLocaleDateString() : ''}
+                                  </span>
+                                </div>
+                              </div>
+                              <p className="text-white/70 text-xs leading-relaxed">{reply.text}</p>
+                              <button
+                                onClick={() => toggleCommentLike(reply)}
+                                disabled={commentLikeBusy[reply._id]}
+                                className={`flex items-center gap-1.5 text-[11px] font-mono transition-colors ${
+                                  reply.likedByUser ? 'text-brand-gold' : 'text-white/40 hover:text-white'
+                                }`}
+                              >
+                                <span>{reply.likedByUser ? '♥' : '♡'}</span>
+                                <span>{reply.likeCount || 0}</span>
+                              </button>
+                            </div>
+                          ))}
+                        </div>
+                      )}
                     </div>
                   ))}
                 </div>
@@ -709,14 +965,15 @@ export default function PlaceDetailPage() {
               </button>
             </div>
 
+            {/* Visa & Entry Requirements Checker */}
+            <VisaChecker place={place} />
+
             {/* Expense Estimator Widget */}
             <div className="bg-[#141417] border border-white/10 rounded-3xl p-6 space-y-5">
               <div>
                 <span className="text-xs font-mono text-brand-gold uppercase tracking-widest block">💰 Trip Expense Estimator</span>
                 <h4 className="font-serif text-xl text-white mt-1">Estimated Budget (INR)</h4>
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
+              </div>                <div className="grid grid-cols-2 gap-3">
                 <div>
                   <span className="text-white/40 font-mono uppercase block text-[10px] mb-1">Days</span>
                   <input
@@ -749,11 +1006,11 @@ export default function PlaceDetailPage() {
                     <span className="text-[10px] font-mono text-white/50">≈ {expense.perPersonFormatted} per person</span>
                   </div>
                   <div className="space-y-2 text-xs font-sans">
-                    <div className="flex justify-between"><span className="text-white/50">Flights (return)</span><span className="text-white font-medium">{formatINR(expense.breakdown.flights.amount)}</span></div>
-                    <div className="flex justify-between"><span className="text-white/50">Stay</span><span className="text-white font-medium">{formatINR(expense.breakdown.stay.amount)}</span></div>
-                    <div className="flex justify-between"><span className="text-white/50">Food</span><span className="text-white font-medium">{formatINR(expense.breakdown.food.amount)}</span></div>
-                    <div className="flex justify-between"><span className="text-white/50">Local Transport</span><span className="text-white font-medium">{formatINR(expense.breakdown.localTransport.amount)}</span></div>
-                    <div className="flex justify-between"><span className="text-white/50">Activities</span><span className="text-white font-medium">{formatINR(expense.breakdown.activities.amount)}</span></div>
+                    <div className="flex justify-between"><span className="text-white/50">Flights (return)</span><span className="text-white font-medium"><CurrencyPrice amount={expense.breakdown.flights.amount} /></span></div>
+                    <div className="flex justify-between"><span className="text-white/50">Stay</span><span className="text-white font-medium"><CurrencyPrice amount={expense.breakdown.stay.amount} /></span></div>
+                    <div className="flex justify-between"><span className="text-white/50">Food</span><span className="text-white font-medium"><CurrencyPrice amount={expense.breakdown.food.amount} /></span></div>
+                    <div className="flex justify-between"><span className="text-white/50">Local Transport</span><span className="text-white font-medium"><CurrencyPrice amount={expense.breakdown.localTransport.amount} /></span></div>
+                    <div className="flex justify-between"><span className="text-white/50">Activities</span><span className="text-white font-medium"><CurrencyPrice amount={expense.breakdown.activities.amount} /></span></div>
                   </div>
                   <p className="text-[10px] text-white/40 italic">{expense.disclaimer}</p>
                 </div>
@@ -864,6 +1121,100 @@ export default function PlaceDetailPage() {
                     onChange={(e) => setReviewForm({ ...reviewForm, comment: e.target.value })}
                     className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-white text-sm focus:border-brand-gold focus:outline-none"
                   />
+                </div>
+
+                {/* Review photos: file upload with auto-compression */}
+                <div className="space-y-2">
+                  <label className="text-xs uppercase font-mono text-white/60">
+                    Photos (optional, up to 6) — auto-compressed
+                  </label>
+
+                  <input
+                    ref={photoFileInputRef}
+                    type="file"
+                    accept="image/*"
+                    multiple
+                    className="hidden"
+                    onChange={handlePhotoFiles}
+                  />
+
+                  <button
+                    type="button"
+                    onClick={() => photoFileInputRef.current?.click()}
+                    disabled={uploadingPhotos || (reviewForm.images || []).length >= 6}
+                    className="w-full border-2 border-dashed border-white/15 rounded-2xl px-4 py-5 text-center text-xs text-white/60 hover:border-brand-gold/50 hover:text-white transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                  >
+                    {uploadingPhotos ? (
+                      <span className="inline-flex items-center gap-2">
+                        <span className="w-4 h-4 border-2 border-brand-gold border-t-transparent rounded-full animate-spin" />
+                        Compressing & adding…
+                      </span>
+                    ) : (
+                      <span>
+                        <span className="block text-lg mb-1">📷</span>
+                        Tap to upload photos
+                        <span className="block text-[10px] text-white/40 mt-1">
+                          JPG / PNG / WebP — resized to 1200px, typically ~90% smaller
+                        </span>
+                      </span>
+                    )}
+                  </button>
+
+                  {/* Secondary option: paste a direct image link */}
+                  {!showUrlInput && !uploadingPhotos && (
+                    <button
+                      type="button"
+                      onClick={() => setShowUrlInput(true)}
+                      className="text-[10px] font-mono text-brand-gold hover:underline"
+                    >
+                      or paste an image link instead
+                    </button>
+                  )}
+                  {showUrlInput && (
+                    <div className="flex gap-2">
+                      <input
+                        type="url"
+                        placeholder="https://images.unsplash.com/..."
+                        value={photoUrlInput}
+                        onChange={(e) => setPhotoUrlInput(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') {
+                            e.preventDefault();
+                            addPhotoUrl();
+                          }
+                        }}
+                        className="flex-1 bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-white text-xs focus:border-brand-gold focus:outline-none"
+                      />
+                      <button
+                        type="button"
+                        onClick={addPhotoUrl}
+                        className="px-4 py-2 rounded-xl bg-white/10 text-white text-xs font-mono hover:bg-white hover:text-black transition-colors shrink-0"
+                      >
+                        Add
+                      </button>
+                    </div>
+                  )}
+                  {photoUrlError && (
+                    <p className="text-[10px] text-red-400 font-mono">⚠️ {photoUrlError}</p>
+                  )}
+                  {(reviewForm.images || []).length > 0 && (
+                    <div className="flex flex-wrap gap-2">
+                      {(reviewForm.images || []).map((img, i) => (
+                        <div key={i} className="relative h-16 w-16 rounded-lg overflow-hidden border border-white/15 group/thumb">
+                          <img src={img} alt={`Photo ${i + 1}`} className="w-full h-full object-cover" />
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setReviewForm({ ...reviewForm, images: reviewForm.images.filter((_, idx) => idx !== i) })
+                            }
+                            className="absolute inset-0 flex items-center justify-center bg-black/70 text-white text-[10px] opacity-0 group-hover/thumb:opacity-100 transition-opacity"
+                          >
+                            ✕ Remove
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
 
                 <button

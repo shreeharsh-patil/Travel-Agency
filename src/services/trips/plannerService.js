@@ -175,6 +175,43 @@ export class TripPlannerService {
     return null;
   }
 
+  /** Fetch the community gallery of published trips (public endpoint). */
+  async fetchPublicTrips() {
+    try {
+      const res = await fetch('/api/trips?public=1');
+      if (res.ok) {
+        const data = await res.json();
+        return data.trips || [];
+      }
+    } catch (err) {
+      console.warn('[PlannerService] Fetch public trips error:', err);
+    }
+    return [];
+  }
+
+  /** Toggle whether one of my synced trips appears in the public gallery. */
+  async setTripPublished(serverId, published) {
+    const token = localStorage.getItem('horizon_token');
+    if (!serverId || !token) return false;
+    try {
+      const res = await fetch('/api/trips', {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`
+        },
+        body: JSON.stringify({ id: serverId, published })
+      });
+      if (res.ok) {
+        const data = await res.json();
+        return Boolean(data.published);
+      }
+    } catch (err) {
+      console.warn('[PlannerService] Set published error:', err);
+    }
+    return false;
+  }
+
   /** Remove a trip locally and (when applicable) from the server. */
   async deleteTrip(localId, serverId) {
     try {
