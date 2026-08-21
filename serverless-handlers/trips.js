@@ -16,8 +16,22 @@ function generateShareId() {
 }
 
 export default async function handler(req, res) {
-  const { db } = await connectToDatabase();
-  const tripsColl = db.collection(COLLECTIONS.trips);
+  let tripsColl;
+  try {
+    const { db } = await connectToDatabase();
+    tripsColl = db.collection(COLLECTIONS.trips);
+  } catch {
+    // The community gallery is public and must degrade cleanly when the
+    // optional account database is unavailable.
+    if (req.method === 'GET' && req.query?.public) {
+      return res.status(200).json({
+        available: false,
+        trips: [],
+        error: 'Published trips are temporarily unavailable.'
+      });
+    }
+    return res.status(503).json({ error: 'Trips are temporarily unavailable.' });
+  }
 
   // POST: Save a trip to the account (authenticated)
   if (req.method === 'POST') {

@@ -58,9 +58,6 @@ export default async function handler(req, res) {
     });
   } catch (err) {
     console.error('[signup]', err);
-    if (/MONGODB_URI is required|Mongo|JWT|secret/i.test(err.message || '')) {
-      return res.status(503).json({ error: 'Account creation is temporarily unavailable. Please try again shortly.' });
-    }
-    return res.status(500).json({ error: 'Could not create account. Please try again.' });
+    return res.status(503).json({ error: 'Account creation is temporarily unavailable. Please try again shortly.' });
   }
 }

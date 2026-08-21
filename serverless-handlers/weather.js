@@ -13,7 +13,8 @@ const CITY_COORDINATES = {
   maldives: { lat: 3.2028, lon: 73.2207, city: 'Maldives', country: 'Maldives' },
   tokyo: { lat: 35.6762, lon: 139.6503, city: 'Tokyo', country: 'Japan' },
   paris: { lat: 48.8566, lon: 2.3522, city: 'Paris', country: 'France' },
-  mumbai: { lat: 19.0760, lon: 72.8777, city: 'Mumbai', country: 'India' }
+  mumbai: { lat: 19.0760, lon: 72.8777, city: 'Mumbai', country: 'India' },
+  ladakh: { lat: 34.1526, lon: 77.5771, city: 'Ladakh', country: 'India' }
 };
 
 function getWeatherDescription(code) {
@@ -36,7 +37,12 @@ export default async function handler(req, res) {
   const matched = CITY_COORDINATES[cityKey];
 
   if ((!queryLat || !queryLon) && !matched) {
-    return res.status(400).json({ available: false, error: 'Coordinates are required for this destination.' });
+    return res.status(200).json({
+      available: false,
+      city: String(city),
+      error: 'Weather is currently unavailable for this destination.',
+      source: 'Open-Meteo'
+    });
   }
 
   const lat = queryLat ? parseFloat(queryLat) : matched.lat;
@@ -57,8 +63,8 @@ export default async function handler(req, res) {
 
     return res.status(200).json({
       success: true,
-      city: matched.city,
-      country: matched.country,
+      city: matched?.city || String(city),
+      country: matched?.country || null,
       coordinates: { lat, lon },
       available: Boolean(data.current_weather),
       temperature: Number.isFinite(current.temperature) ? `${Math.round(current.temperature)}°C` : null,
