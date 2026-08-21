@@ -5,17 +5,21 @@ import { fetchOriginalPlaceImage } from './external-images.js';
 
 
 export default async function handler(req, res) {
-  const { db } = await connectToDatabase();
-  const placesColl = db.collection(COLLECTIONS.places);
-
   // GET: Fetch places (Public approved places or Admin list)
   if (req.method === 'GET') {
     try {
       const { status, slug } = req.query || {};
+      let placesColl = null;
+      try {
+        const { db } = await connectToDatabase();
+        placesColl = db.collection(COLLECTIONS.places);
+      } catch (error) {
+        console.error('[places] MongoDB unavailable:', error.message);
+      }
 
       if (slug) {
         // Find single place by slug or id
-        const dbPlace = await placesColl.findOne({ $or: [{ slug }, { id: slug }] });
+        const dbPlace = placesColl ? await placesColl.findOne({ $or: [{ slug }, { id: slug }] }) : null;
         if (dbPlace) {
           return res.status(200).json({ place: dbPlace });
         }
@@ -30,7 +34,12 @@ export default async function handler(req, res) {
           });
         }
 
-        // Universal fallback for any place on Earth
+        if (!placesColl) return res.status(404).json({ error: 'Destination not found.' });
+
+        // Disabled by default. This legacy compatibility branch is never used
+        // in production because it would synthesise destination metadata.
+        if (process.env.LEGACY_DEMO_MODE === '1') {
+        // Legacy fallback.
         const formattedName = slug.replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
         const originalImage = await fetchOriginalPlaceImage(formattedName);
 
@@ -55,12 +64,13 @@ export default async function handler(req, res) {
         };
 
         return res.status(200).json({ place: dynamicPlace });
+        }
+        return res.status(404).json({ error: 'Destination not found.' });
       }
 
 
       const queryFilter = status ? { status } : { status: 'APPROVED' };
-      const cursor = await placesColl.find(queryFilter);
-      const dbPlaces = await cursor.toArray();
+      const dbPlaces = placesColl ? await (await placesColl.find(queryFilter)).toArray() : [];
 
       // Merge with static destinations for public listing if status is APPROVED or empty
       if (!status || status === 'APPROVED') {
@@ -83,6 +93,13 @@ export default async function handler(req, res) {
 
   // POST: Suggest / Add a Place (Authenticated users)
   if (req.method === 'POST') {
+    let placesColl;
+    try {
+      const { db } = await connectToDatabase();
+      placesColl = db.collection(COLLECTIONS.places);
+    } catch {
+      return res.status(503).json({ error: 'Place submissions are temporarily unavailable.' });
+    }
     const token = getTokenFromReq(req);
     if (!token) {
       return res.status(401).json({ error: 'Authentication required to suggest a place.' });
@@ -162,6 +179,13 @@ export default async function handler(req, res) {
 
   // PATCH: Admin Approve / Reject / Edit Place
   if (req.method === 'PATCH') {
+    let placesColl;
+    try {
+      const { db } = await connectToDatabase();
+      placesColl = db.collection(COLLECTIONS.places);
+    } catch {
+      return res.status(503).json({ error: 'Place moderation is temporarily unavailable.' });
+    }
     const { id, status, admin_notes, name, country, description, category, priceFrom } = req.body || {};
 
     if (!id || !status) {
@@ -200,6 +224,13 @@ export default async function handler(req, res) {
 
   // DELETE: Admin delete place
   if (req.method === 'DELETE') {
+    let placesColl;
+    try {
+      const { db } = await connectToDatabase();
+      placesColl = db.collection(COLLECTIONS.places);
+    } catch {
+      return res.status(503).json({ error: 'Place moderation is temporarily unavailable.' });
+    }
     const { id } = req.query || {};
     if (!id) return res.status(400).json({ error: 'Place ID is required.' });
 

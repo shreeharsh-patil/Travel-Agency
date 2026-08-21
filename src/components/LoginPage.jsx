@@ -18,6 +18,7 @@ export default function LoginPage() {
         fetch('/api/auth/me')
             .then((r) => (r.ok ? r.json() : Promise.reject(new Error('Session expired'))))
             .then((data) => {
+                if (!data.user) return;
                 setFormData((prev) => ({ ...prev, email: data.user.email }));
                 setLoggedIn(true);
             })

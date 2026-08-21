@@ -10,7 +10,7 @@ export default async function handler(req, res) {
   try {
     const token = getTokenFromReq(req);
     if (!token) {
-      return res.status(401).json({ error: 'Not authenticated.' });
+      return res.status(200).json({ authenticated: false, user: null });
     }
 
     const payload = verifyToken(token);
@@ -27,7 +27,7 @@ export default async function handler(req, res) {
       .findOne(idFilter, { projection: { password: 0 } });
 
     if (!user) {
-      return res.status(401).json({ error: 'Account no longer exists.' });
+      return res.status(200).json({ authenticated: false, user: null });
     }
 
     return res.status(200).json({
@@ -53,7 +53,7 @@ export default async function handler(req, res) {
     });
   } catch (err) {
     if (err.name === 'JsonWebTokenError' || err.name === 'TokenExpiredError') {
-      return res.status(401).json({ error: 'Session expired. Please sign in again.' });
+      return res.status(200).json({ authenticated: false, user: null });
     }
     console.error('[me]', err);
     return res.status(500).json({ error: 'Could not load your account.' });

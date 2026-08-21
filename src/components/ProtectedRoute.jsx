@@ -6,8 +6,8 @@ export default function ProtectedRoute({ children, admin = false }) {
   const [state, setState] = useState({ loading: true, allowed: false });
   useEffect(() => {
     let active = true;
-    fetch('/api/auth/me').then(async (res) => ({ res, data: res.ok ? await res.json() : null })).then(({ res, data }) => {
-      if (active) setState({ loading: false, allowed: res.ok && (!admin || data.user?.role === 'admin') });
+    fetch('/api/auth/me').then(async (res) => ({ data: res.ok ? await res.json() : null })).then(({ data }) => {
+      if (active) setState({ loading: false, allowed: Boolean(data?.user) && (!admin || data.user?.role === 'admin') });
     }).catch(() => active && setState({ loading: false, allowed: false }));
     return () => { active = false; };
   }, [admin]);
