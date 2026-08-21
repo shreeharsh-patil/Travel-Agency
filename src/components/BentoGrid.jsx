@@ -1,9 +1,11 @@
 
 import React from 'react';
 import { motion } from "framer-motion";
+import { Link, useNavigate } from 'react-router-dom';
 import { bentoCards } from "../data/travelData";
 
 const Card = ({ card, index }) => {
+    const navigate = useNavigate();
     const isLarge = card.size === "large";
     const isWide = card.size === "wide";
     const isPenthouse = card.id === "penthouse";
@@ -18,6 +20,15 @@ const Card = ({ card, index }) => {
 
     return (
         <motion.div
+            onClick={() => navigate(card.to)}
+            onKeyDown={(event) => {
+                if (event.key === 'Enter' || event.key === ' ') {
+                    event.preventDefault();
+                    navigate(card.to);
+                }
+            }}
+            role="link"
+            tabIndex={0}
             initial={{ opacity: 0, y: 30 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
@@ -74,9 +85,9 @@ const Card = ({ card, index }) => {
                         <p className="text-sm text-gray-200 mt-2 font-sans line-clamp-2">
                             {card.description}
                         </p>
-                        <button className={`mt-4 text-xs font-bold uppercase tracking-widest text-white border-b hover:text-travel-gold hover:border-travel-gold transition-colors duration-300 ${isPenthouse ? 'border-travel-gold pb-1 text-travel-gold' : 'border-travel-gold pb-1'}`}>
+                        <Link to={card.to} className={`mt-4 inline-block text-xs font-bold uppercase tracking-widest text-white border-b hover:text-travel-gold hover:border-travel-gold transition-colors duration-300 ${isPenthouse ? 'border-travel-gold pb-1 text-travel-gold' : 'border-travel-gold pb-1'}`}>
                             Explore
-                        </button>
+                        </Link>
                     </div>
                 </div>
             </div>

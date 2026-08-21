@@ -7,6 +7,7 @@ export const bentoCards = [
         stats: "From ₹1,25,000 | 7 nights",
         size: "large",
         description: "Experience the golden hour over the caldera.",
+        to: '/travel',
     },
     {
         id: "tropical",
@@ -16,6 +17,7 @@ export const bentoCards = [
         stats: "From ₹85,000 | 5 nights",
         size: "medium",
         description: "Relax with palm silhouettes and ocean breezes.",
+        to: '/travel',
     },
     {
         id: "first-class",
@@ -25,6 +27,7 @@ export const bentoCards = [
         stats: "Upgrade from ₹35,000",
         size: "medium",
         description: "Sip champagne at 30,000 feet.",
+        to: '/private-jets',
     },
     {
         id: "aviation",
@@ -34,6 +37,7 @@ export const bentoCards = [
         stats: "150+ Cities",
         size: "wide",
         description: "Explore the world with seamless connections.",
+        to: '/flights',
     },
     {
         id: "penthouse",
@@ -43,5 +47,6 @@ export const bentoCards = [
         stats: "Elite Members Only",
         size: "medium",
         description: "Unlocking the ultimate luxury experience.",
+        to: '/villas',
     }
 ];

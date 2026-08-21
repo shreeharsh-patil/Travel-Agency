@@ -1,3 +1,5 @@
+import { Link } from 'react-router-dom';
+
 export default function PricingSection() {
     const cards = [
         {
@@ -5,6 +7,7 @@ export default function PricingSection() {
             price: "From ₹35,000 / Night",
             description: "Overwater sanctuaries with private infinity pools and direct lagoon access.",
             image: "/images/ubud.png",
+            to: '/villas',
             dark: false
         },
         {
@@ -12,6 +15,7 @@ export default function PricingSection() {
             price: "From ₹75,000 / Night",
             description: "Sprawling beachfront estates surrounded by lush tropical gardens.",
             image: "/images/mykonos.png",
+            to: '/villas',
             dark: true
         },
         {
@@ -19,6 +23,7 @@ export default function PricingSection() {
             price: "Inquire for Pricing (INR)",
             description: "The crown jewel of the island. 5 bedrooms, private chef, and yacht access.",
             image: "/images/villa_mansion.png",
+            to: '/villas',
             dark: false,
             accent: true
         }
@@ -35,8 +40,10 @@ export default function PricingSection() {
 
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-8 md:min-h-[80vh]">
                     {cards.map((card, idx) => (
-                        <div
+                        <Link
                             key={idx}
+                            to={card.to}
+                            aria-label={`Explore ${card.title}`}
                             className={`group relative h-[440px] sm:h-[480px] md:h-auto rounded-[28px] md:rounded-[40px] overflow-hidden transition-all duration-700 hover:scale-[1.02] cursor-pointer shadow-2xl
                                 ${card.dark ? 'bg-[#1a1a1a]' : 'bg-white'}
                                 ${card.accent ? 'border border-brand-gold/30' : ''}
@@ -74,7 +81,7 @@ export default function PricingSection() {
                                     </div>
                                 </div>
                             </div>
-                        </div>
+                        </Link>
                     ))}
                 </div>
             </div>
