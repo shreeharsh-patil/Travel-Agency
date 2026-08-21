@@ -668,11 +668,11 @@ export default function PlaceDetailPage() {
                   </div>
                 </div>
 
-                <div className="flex items-center gap-3">
+                <div className="flex w-full flex-col gap-3 min-[420px]:flex-row min-[420px]:items-center sm:w-auto">
                   <select
                     value={sortReviews}
                     onChange={(e) => setSortReviews(e.target.value)}
-                    className="bg-black/60 border border-white/10 rounded-full px-4 py-2 text-xs text-white focus:outline-none"
+                    className="w-full bg-black/60 border border-white/10 rounded-full px-4 py-2 text-xs text-white focus:outline-none min-[420px]:w-auto"
                   >
                     <option value="recent">Most Recent</option>
                     <option value="highest">Highest Rated</option>
@@ -681,7 +681,7 @@ export default function PlaceDetailPage() {
 
                   <button
                     onClick={() => setShowReviewModal(true)}
-                    className="px-5 py-2.5 rounded-full bg-white text-black text-xs font-bold uppercase tracking-wider hover:bg-brand-gold hover:text-white transition-colors"
+                    className="min-h-11 w-full px-5 py-2.5 rounded-full bg-white text-black text-xs font-bold uppercase tracking-wider hover:bg-brand-gold hover:text-white transition-colors min-[420px]:w-auto"
                   >
                     + Write a Review
                   </button>
@@ -787,7 +787,7 @@ export default function PlaceDetailPage() {
                 </div>
                 <button
                   onClick={() => setShowCommentModal(true)}
-                  className="px-5 py-2.5 rounded-full bg-white text-black text-xs font-bold uppercase tracking-wider hover:bg-brand-gold hover:text-white transition-colors"
+                  className="min-h-11 w-full px-5 py-2.5 rounded-full bg-white text-black text-xs font-bold uppercase tracking-wider hover:bg-brand-gold hover:text-white transition-colors sm:w-auto"
                 >
                   + Add a Comment
                 </button>
@@ -1023,7 +1023,7 @@ export default function PlaceDetailPage() {
               initial={{ scale: 0.95, y: 20 }}
               animate={{ scale: 1, y: 0 }}
               exit={{ scale: 0.95, y: 20 }}
-              className="relative w-full max-w-lg bg-[#141417] border border-white/15 rounded-3xl p-6 sm:p-8 space-y-6 shadow-2xl"
+              className="relative max-h-[calc(100dvh-2rem)] w-full max-w-lg overflow-y-auto bg-[#141417] border border-white/15 rounded-3xl p-6 sm:p-8 space-y-6 shadow-2xl"
             >
               <button
                 onClick={() => setShowReviewModal(false)}
@@ -1219,7 +1219,7 @@ export default function PlaceDetailPage() {
               initial={{ scale: 0.95, y: 20 }}
               animate={{ scale: 1, y: 0 }}
               exit={{ scale: 0.95, y: 20 }}
-              className="relative w-full max-w-lg bg-[#141417] border border-white/15 rounded-3xl p-6 sm:p-8 space-y-6 shadow-2xl"
+              className="relative max-h-[calc(100dvh-2rem)] w-full max-w-lg overflow-y-auto bg-[#141417] border border-white/15 rounded-3xl p-6 sm:p-8 space-y-6 shadow-2xl"
             >
               <button
                 onClick={() => setShowCommentModal(false)}
