@@ -21,9 +21,6 @@ export default defineConfig({
           // Stable vendor chunks for better caching and smaller initial loads.
           'react-vendor': ['react', 'react-dom', 'react-router-dom'],
           'motion': ['framer-motion'],
-          // GSAP only renders on the home page hero; keeping it in its own
-          // chunk means other pages never download it.
-          'gsap': ['gsap', 'gsap/ScrollTrigger']
         }
       }
     }
