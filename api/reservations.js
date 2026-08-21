@@ -1,6 +1,14 @@
 import { connectToDatabase, COLLECTIONS } from '../lib/db.js';
+import { authenticateRequest } from '../lib/requestAuth.js';
 
 export default async function handler(req, res) {
+  if (req.method === 'GET') {
+    const auth = await authenticateRequest(req, res);
+    if (!auth) return;
+    const { db } = await connectToDatabase();
+    const reservations = await db.collection(COLLECTIONS.reservations).find({ userId: auth.id }).sort({ createdAt: -1 }).toArray();
+    return res.json({ bookings: reservations.map(({ _id, ...booking }) => ({ id: String(_id), ...booking })) });
+  }
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
@@ -27,6 +35,8 @@ export default async function handler(req, res) {
   }
 
   try {
+    const auth = await authenticateRequest(req, res);
+    if (!auth) return;
     const { db } = await connectToDatabase();
 
     const doc = {
@@ -43,7 +53,8 @@ export default async function handler(req, res) {
       destinationLocation: destinationLocation || null,
       totalEstimate: Number(totalEstimate) || null,
       bookingReference: bookingReference || null,
-      status: 'new',
+      userId: auth.id,
+      status: 'pending',
       createdAt: new Date(),
     };
 

@@ -14,6 +14,7 @@ const BUDGET_OPTIONS = [
 export default function UserAccountPage() {
   const [user, setUser] = useState(null);
   const [serverTripCount, setServerTripCount] = useState(0);
+  const [bookings, setBookings] = useState([]);
   const [activeTab, setActiveTab] = useState('bookings'); // 'bookings' | 'trips' | 'saved' | 'profile'
   const [saving, setSaving] = useState(false);
   const [saveMsg, setSaveMsg] = useState(null);
@@ -30,16 +31,12 @@ export default function UserAccountPage() {
   useEffect(() => {
     loadProfile();
     loadServerTripCount();
+    loadBookings();
   }, []);
 
   const loadProfile = async () => {
-    const token = localStorage.getItem('horizon_token');
-    if (!token) return;
-
     try {
-      const res = await fetch('/api/auth/me', {
-        headers: { Authorization: `Bearer ${token}` }
-      });
+      const res = await fetch('/api/auth/me');
       if (res.ok) {
         const data = await res.json();
         const u = data.user;
@@ -58,13 +55,18 @@ export default function UserAccountPage() {
     }
   };
 
-  const loadServerTripCount = async () => {
-    const token = localStorage.getItem('horizon_token');
-    if (!token) return;
+  const loadBookings = async () => {
     try {
-      const res = await fetch('/api/trips', {
-        headers: { Authorization: `Bearer ${token}` }
-      });
+      const res = await fetch('/api/reservations');
+      if (res.ok) setBookings((await res.json()).bookings || []);
+    } catch (err) {
+      console.error('Load bookings error:', err);
+    }
+  };
+
+  const loadServerTripCount = async () => {
+    try {
+      const res = await fetch('/api/trips');
       if (res.ok) {
         const data = await res.json();
         setServerTripCount((data.trips || []).length);
@@ -88,19 +90,11 @@ export default function UserAccountPage() {
     setSaving(true);
     setSaveMsg(null);
 
-    const token = localStorage.getItem('horizon_token');
-    if (!token) {
-      setSaveMsg({ type: 'error', text: 'Please sign in to save your profile.' });
-      setSaving(false);
-      return;
-    }
-
     try {
       const res = await fetch('/api/auth/me', {
         method: 'PATCH',
         headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`
+          'Content-Type': 'application/json'
         },
         body: JSON.stringify({
           name: profileForm.name,
@@ -191,22 +185,18 @@ export default function UserAccountPage() {
         {/* Tab Content */}
         {activeTab === 'bookings' && (
           <div className="space-y-6">
-            <h3 className="font-serif text-2xl text-white">Your Bookings & Boarding Passes</h3>
-            <div className="p-8 rounded-3xl bg-[#121214] border border-white/10 space-y-4">
-              <div className="flex justify-between items-start border-b border-white/10 pb-4">
-                <div>
-                  <span className="text-[10px] font-mono text-brand-gold uppercase">REF: TRV-2026-A82K9P</span>
-                  <h4 className="font-serif text-2xl text-white">Goa Beach & Luxury Villa Retreat</h4>
-                  <p className="text-xs font-mono text-white/50">Travelers: 2 Guests • Status: <strong className="text-green-400">CONFIRMED</strong></p>
-                </div>
-                <span className="px-3.5 py-1 rounded-full bg-green-500/20 text-green-300 text-xs font-mono">
-                  PAID (₹35,000)
-                </span>
+            <h3 className="font-serif text-2xl text-white">Your Booking Requests</h3>
+            {bookings.length === 0 ? (
+              <div className="p-8 rounded-3xl bg-[#121214] border border-white/10 text-center space-y-3">
+                <p className="font-serif text-xl text-white">No booking requests yet.</p>
+                <p className="text-xs text-white/55">Provider confirmations appear here only after Horizon receives a verified booking reference.</p>
               </div>
-              <p className="text-xs text-white/70">
-                Boarding pass active. Chauffeur pickup scheduled from Manohar International Airport (MOPA).
-              </p>
-            </div>
+            ) : bookings.map((booking) => (
+              <div key={booking.id} className="p-6 rounded-3xl bg-[#121214] border border-white/10 flex flex-col sm:flex-row justify-between gap-4">
+                <div><p className="text-[10px] font-mono text-brand-gold uppercase">{booking.bookingReference || 'Booking request'}</p><h4 className="font-serif text-xl text-white">{booking.destination || 'Custom journey'}</h4><p className="text-xs text-white/55">{booking.guests || 'Travelers not specified'} · {booking.startDate || 'Dates to be confirmed'}</p></div>
+                <span className="self-start px-3 py-1 rounded-full bg-white/10 text-xs font-mono text-white/70 uppercase">{booking.status}</span>
+              </div>
+            ))}
           </div>
         )}
 

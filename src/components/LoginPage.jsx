@@ -1,9 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Link } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 
 export default function LoginPage() {
-    const [formData, setFormData] = useState({ email: '', password: '' });
+    const location = useLocation();
+    const navigate = useNavigate();
+    const [formData, setFormData] = useState({ name: '', email: '', password: '' });
     const [showPassword, setShowPassword] = useState(false);
     const [remember, setRemember] = useState(false);
     const [error, setError] = useState('');
@@ -11,26 +13,21 @@ export default function LoginPage() {
     const [loggedIn, setLoggedIn] = useState(false);
     const [mode, setMode] = useState('login'); // login | signup
 
-    // Restore an existing session on page load by validating the stored token.
+    // The session lives in an HttpOnly cookie; no credential is persisted in localStorage.
     useEffect(() => {
-        // Migrate legacy session keys to the single horizon_token used app-wide.
-        const token = localStorage.getItem('horizon_token') || localStorage.getItem('ht_token');
-        if (!token) return;
-        fetch('/api/auth/me', {
-            headers: { Authorization: `Bearer ${token}` }
-        })
+        fetch('/api/auth/me')
             .then((r) => (r.ok ? r.json() : Promise.reject(new Error('Session expired'))))
             .then((data) => {
                 setFormData((prev) => ({ ...prev, email: data.user.email }));
                 setLoggedIn(true);
             })
             .catch(() => {
-                localStorage.removeItem('horizon_token');
-                localStorage.removeItem('horizon_user_email');
-                localStorage.removeItem('ht_token');
-                localStorage.removeItem('ht_user');
             });
     }, []);
+
+    useEffect(() => {
+        if (loggedIn && location.state?.from) navigate(location.state.from, { replace: true });
+    }, [loggedIn, location.state, navigate]);
 
     const handleChange = (e) => {
         setFormData(prev => ({ ...prev, [e.target.name]: e.target.value }));
@@ -47,8 +44,8 @@ export default function LoginPage() {
             setError('Please enter a valid email address.');
             return;
         }
-        if (mode === 'signup' && formData.password.length < 6) {
-            setError('Password must be at least 6 characters.');
+        if (mode === 'signup' && (!formData.name.trim() || formData.password.length < 12)) {
+            setError('Enter your name and a password of at least 12 characters.');
             return;
         }
 
@@ -58,16 +55,12 @@ export default function LoginPage() {
             const res = await fetch(`/api/auth/${mode}`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ email: formData.email, password: formData.password })
+                body: JSON.stringify({ name: formData.name, email: formData.email, password: formData.password })
             });
             const data = await res.json().catch(() => ({}));
             if (!res.ok) {
                 throw new Error(data.error || 'Something went wrong. Please try again.');
             }
-            localStorage.removeItem('ht_token');
-            localStorage.removeItem('ht_user');
-            localStorage.setItem('horizon_token', data.token);
-            localStorage.setItem('horizon_user_email', data.user.email);
             setLoggedIn(true);
         } catch (err) {
             setError(err.message);
@@ -106,10 +99,7 @@ export default function LoginPage() {
                         </Link>
                         <button
                             onClick={() => {
-                                localStorage.removeItem('horizon_token');
-                                localStorage.removeItem('horizon_user_email');
-                                localStorage.removeItem('ht_token');
-                                localStorage.removeItem('ht_user');
+                                fetch('/api/auth/logout', { method: 'POST' });
                                 setLoggedIn(false);
                             }}
                             className="px-8 py-3 bg-white/10 backdrop-blur-md border border-white/20 rounded-full text-white font-sans text-sm font-semibold uppercase tracking-widest hover:bg-white/20 transition-colors"
@@ -163,6 +153,12 @@ export default function LoginPage() {
                         </p>
 
                         <form onSubmit={handleSubmit} className="space-y-8">
+                            {mode === 'signup' && (
+                                <div className="space-y-2">
+                                    <label className="text-xs uppercase tracking-widest text-white/50">Full name</label>
+                                    <input type="text" name="name" value={formData.name} onChange={handleChange} autoComplete="name" className="w-full bg-white/5 border border-white/15 rounded-xl px-4 py-3.5 text-white focus:outline-none focus:border-brand-gold" />
+                                </div>
+                            )}
                             <div className="space-y-2">
                                 <label className="text-xs uppercase tracking-widest text-white/50">Email</label>
                                 <input

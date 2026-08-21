@@ -89,15 +89,12 @@ export class TripPlannerService {
       myTrips.unshift(newTrip);
       localStorage.setItem('horizon_my_trips', JSON.stringify(myTrips));
 
-      // Best-effort server sync (offline / signed-out trips stay local).
-      const token = localStorage.getItem('horizon_token');
-      if (token) {
-        try {
+      // Cookie-authenticated server sync; a network/auth failure keeps the local draft.
+      try {
           const res = await fetch('/api/trips', {
             method: 'POST',
             headers: {
-              'Content-Type': 'application/json',
-              Authorization: `Bearer ${token}`
+              'Content-Type': 'application/json'
             },
             body: JSON.stringify({
               title: `${itinerary.durationDays}-Day Escape to ${itinerary.destination}`,
@@ -122,9 +119,8 @@ export class TripPlannerService {
               localStorage.setItem('horizon_my_trips', JSON.stringify(updated));
             }
           }
-        } catch (err) {
-          console.warn('[PlannerService] Server sync failed (trip stays local):', err);
-        }
+      } catch (err) {
+        console.warn('[PlannerService] Server sync failed (trip stays local):', err);
       }
 
       return newTrip;
@@ -145,12 +141,8 @@ export class TripPlannerService {
 
   /** Fetch trips synced to the signed-in account from the server. */
   async fetchServerTrips() {
-    const token = localStorage.getItem('horizon_token');
-    if (!token) return [];
     try {
-      const res = await fetch('/api/trips', {
-        headers: { Authorization: `Bearer ${token}` }
-      });
+      const res = await fetch('/api/trips');
       if (res.ok) {
         const data = await res.json();
         return data.trips || [];
@@ -191,14 +183,12 @@ export class TripPlannerService {
 
   /** Toggle whether one of my synced trips appears in the public gallery. */
   async setTripPublished(serverId, published) {
-    const token = localStorage.getItem('horizon_token');
-    if (!serverId || !token) return false;
+    if (!serverId) return false;
     try {
       const res = await fetch('/api/trips', {
         method: 'PATCH',
         headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`
+          'Content-Type': 'application/json'
         },
         body: JSON.stringify({ id: serverId, published })
       });
@@ -225,12 +215,9 @@ export class TripPlannerService {
     }
 
     if (!serverId) return;
-    const token = localStorage.getItem('horizon_token');
-    if (!token) return;
     try {
       await fetch(`/api/trips?id=${encodeURIComponent(serverId)}`, {
-        method: 'DELETE',
-        headers: { Authorization: `Bearer ${token}` }
+        method: 'DELETE'
       });
     } catch (err) {
       console.warn('[PlannerService] Server delete error:', err);

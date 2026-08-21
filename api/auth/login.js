@@ -1,5 +1,5 @@
 import { connectToDatabase, COLLECTIONS } from '../../lib/db.js';
-import { verifyPassword, signToken } from '../../lib/auth.js';
+import { verifyPassword, signToken, sessionCookie } from '../../lib/auth.js';
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
@@ -22,15 +22,15 @@ export default async function handler(req, res) {
       return res.status(401).json({ error: 'Invalid email or password.' });
     }
 
-    const valid = await verifyPassword(password, user.password);
+    const valid = await verifyPassword(String(password), user.passwordHash);
     if (!valid) {
       return res.status(401).json({ error: 'Invalid email or password.' });
     }
 
     const token = signToken(user);
 
+    res.setHeader('Set-Cookie', sessionCookie(token));
     return res.status(200).json({
-      token,
       user: {
         id: user._id.toString(),
         email: user.email,

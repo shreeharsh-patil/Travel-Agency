@@ -1,9 +1,11 @@
 import { connectToDatabase, COLLECTIONS } from '../../lib/db.js';
+import { authenticateRequest } from '../../lib/requestAuth.js';
 
 export default async function handler(req, res) {
   if (req.method !== 'GET') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
+  if (!(await authenticateRequest(req, res, { admin: true }))) return;
 
   try {
     const { db } = await connectToDatabase();
@@ -24,7 +26,7 @@ export default async function handler(req, res) {
     const reviewsCursor = await reviewsColl.find({ status: 'APPROVED' });
     const reviewsList = await reviewsCursor.toArray();
     
-    let averageRating = 4.8;
+    let averageRating = null;
     if (reviewsList.length > 0) {
       const sum = reviewsList.reduce((acc, r) => acc + (r.rating || 5), 0);
       averageRating = Number((sum / reviewsList.length).toFixed(1));

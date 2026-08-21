@@ -40,19 +40,11 @@ export default function SuggestPlacePage() {
     setErrorMsg(null);
     setSuccessMsg(null);
 
-    const token = localStorage.getItem('horizon_token');
-    if (!token) {
-      setErrorMsg('Please log in first to submit a new place.');
-      setLoading(false);
-      return;
-    }
-
     try {
       const res = await fetch('/api/places', {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`
+          'Content-Type': 'application/json'
         },
         body: JSON.stringify(formData)
       });

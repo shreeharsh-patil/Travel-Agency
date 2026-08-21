@@ -54,16 +54,10 @@ export class OpenStreetMapPlaceProvider {
   }
 
   async suggestUserPlace(placeData) {
-    const token = localStorage.getItem('horizon_token');
-    if (!token) {
-      throw new Error('Authentication required to suggest a place.');
-    }
-
     const res = await fetch('/api/places', {
       method: 'POST',
       headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${token}`
+        'Content-Type': 'application/json'
       },
       body: JSON.stringify(placeData)
     });

@@ -17,18 +17,12 @@ export class OpenMeteoWeatherProvider {
       const data = await res.json();
       return data;
     } catch (err) {
-      console.warn('[WeatherProvider] Live weather fallback:', err);
+      console.warn('[WeatherProvider] Live weather unavailable:', err);
       return {
-        success: true,
+        available: false,
         city: city || 'Sanctuary',
-        temperature: '25°C',
-        condition: 'Clear Sky ☀️',
-        windSpeed: '10 km/h',
-        forecast: [
-          { date: 'Today', maxTemp: '27°C', minTemp: '20°C' },
-          { date: 'Tomorrow', maxTemp: '28°C', minTemp: '21°C' },
-          { date: 'Day After', maxTemp: '26°C', minTemp: '19°C' }
-        ]
+        error: 'Weather currently unavailable',
+        forecast: []
       };
     }
   }

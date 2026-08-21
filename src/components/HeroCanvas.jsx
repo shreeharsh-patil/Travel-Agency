@@ -1,6 +1,7 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import gsap from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
+import { Link } from 'react-router-dom';
 import { useCanvasVideo } from '../hooks/useCanvasVideo';
 
 // GSAP is pulled into its own lazy chunk by vite.config.js (manualChunks),
@@ -12,15 +13,26 @@ export default function HeroCanvas({ scrollTrackRef }) {
     const textRef1 = useRef(null);
     const textRef2 = useRef(null);
     const textRef3 = useRef(null);
+    const [compactHero, setCompactHero] = useState(false);
 
     // Use the hook to get the image drawing function (frames lazy-load on scroll).
     const { drawFrame, isLoading, progress } = useCanvasVideo(canvasRef);
+
+    useEffect(() => {
+        const media = window.matchMedia('(max-width: 767px), (prefers-reduced-motion: reduce)');
+        const update = () => setCompactHero(media.matches);
+        update();
+        media.addEventListener('change', update);
+        return () => media.removeEventListener('change', update);
+    }, []);
 
     useEffect(() => {
         if (isLoading) return;
 
         // Initial draw
         drawFrame(0);
+
+        if (compactHero) return undefined;
 
         // Resize handler using the current progress
         const handleResize = () => {
@@ -79,7 +91,7 @@ export default function HeroCanvas({ scrollTrackRef }) {
             ScrollTrigger.getById('hero-scroll')?.kill();
             tl.kill();
         };
-    }, [isLoading, drawFrame, scrollTrackRef]);
+    }, [isLoading, compactHero, drawFrame, scrollTrackRef]);
 
     if (isLoading) {
         return (
@@ -101,18 +113,19 @@ export default function HeroCanvas({ scrollTrackRef }) {
                 ref={canvasRef}
                 className="block w-full h-full object-cover filter contrast-[1.05] saturate-[1.05]"
             />
+            <div className="absolute inset-0 bg-gradient-to-b from-black/35 via-transparent to-black/75 pointer-events-none" />
 
             {/* Text Layer */}
             <div className="absolute inset-0 pointer-events-none z-10">
                 {/* Text 1: Centered */}
                 <div className="absolute inset-0 flex items-center justify-center">
-                    <h1 ref={textRef1} className="font-serif text-[clamp(4rem,10vw,8rem)] text-white text-center leading-[0.9] tracking-tighter opacity-0 drop-shadow-2xl">
+                    <h1 ref={textRef1} className={`font-serif text-[clamp(3.25rem,15vw,8rem)] text-white text-center leading-[0.9] tracking-tighter drop-shadow-2xl ${compactHero ? 'opacity-100 px-5' : 'opacity-0'}`}>
                         EXPLORE<br />PARADISE
                     </h1>
                 </div>
 
                 {/* Text 2: Bottom Left */}
-                <div className="absolute inset-0 flex items-end justify-start pb-32 pl-10 md:pl-20">
+                <div className={`absolute inset-0 items-end justify-start pb-32 pl-10 md:pl-20 ${compactHero ? 'hidden' : 'flex'}`}>
                     <div>
                         <h1 ref={textRef2} className="font-serif text-[clamp(3rem,6vw,5rem)] text-white leading-none opacity-0 drop-shadow-2xl text-left">
                             We have<br />financing<br />plans.
@@ -121,12 +134,18 @@ export default function HeroCanvas({ scrollTrackRef }) {
                 </div>
 
                 {/* Text 3: Center */}
-                <div className="absolute inset-0 flex items-center justify-center">
+                <div className={`absolute inset-0 items-center justify-center ${compactHero ? 'hidden' : 'flex'}`}>
                     <h1 ref={textRef3} className="font-serif text-[clamp(3rem,8vw,7rem)] text-white text-center leading-none opacity-0 drop-shadow-2xl">
                         YOU DESERVE IT
                     </h1>
                 </div>
             </div>
+            {compactHero && (
+                <div className="absolute inset-x-5 bottom-9 z-20 flex flex-col gap-3">
+                    <p className="text-center text-xs tracking-[0.22em] uppercase text-white/75">Extraordinary stays, thoughtfully planned</p>
+                    <Link to="/travel" className="pointer-events-auto min-h-12 rounded-full bg-white px-5 py-3.5 text-center text-xs font-bold uppercase tracking-[0.18em] text-black shadow-xl active:scale-[0.98]">Explore destinations</Link>
+                </div>
+            )}
         </div>
     );
 }

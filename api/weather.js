@@ -33,7 +33,11 @@ export default async function handler(req, res) {
 
   const { city = 'goa', lat: queryLat, lon: queryLon } = req.query || {};
   const cityKey = String(city).toLowerCase().trim();
-  const matched = CITY_COORDINATES[cityKey] || CITY_COORDINATES.goa;
+  const matched = CITY_COORDINATES[cityKey];
+
+  if ((!queryLat || !queryLon) && !matched) {
+    return res.status(400).json({ available: false, error: 'Coordinates are required for this destination.' });
+  }
 
   const lat = queryLat ? parseFloat(queryLat) : matched.lat;
   const lon = queryLon ? parseFloat(queryLon) : matched.lon;
@@ -56,33 +60,20 @@ export default async function handler(req, res) {
       city: matched.city,
       country: matched.country,
       coordinates: { lat, lon },
-      temperature: current.temperature ? `${Math.round(current.temperature)}°C` : '24°C',
-      condition: getWeatherDescription(current.weathercode || 0),
-      windSpeed: current.windspeed ? `${current.windspeed} km/h` : '12 km/h',
+      available: Boolean(data.current_weather),
+      temperature: Number.isFinite(current.temperature) ? `${Math.round(current.temperature)}°C` : null,
+      condition: Number.isFinite(current.weathercode) ? getWeatherDescription(current.weathercode) : null,
+      windSpeed: Number.isFinite(current.windspeed) ? `${current.windspeed} km/h` : null,
       forecast: (daily.time || []).slice(0, 3).map((time, idx) => ({
         date: time,
         maxTemp: `${Math.round(daily.temperature_2m_max[idx])}°C`,
         minTemp: `${Math.round(daily.temperature_2m_min[idx])}°C`
       })),
-      source: 'Free Open-Meteo Live API'
+      source: 'Open-Meteo',
+      lastUpdated: data.current_weather?.time || null
     });
   } catch (err) {
-    console.error('[GET /api/weather] Fallback triggered:', err);
-
-    return res.status(200).json({
-      success: true,
-      city: matched.city,
-      country: matched.country,
-      coordinates: { lat, lon },
-      temperature: '25°C',
-      condition: 'Clear Sky ☀️',
-      windSpeed: '10 km/h',
-      forecast: [
-        { date: 'Today', maxTemp: '27°C', minTemp: '20°C' },
-        { date: 'Tomorrow', maxTemp: '28°C', minTemp: '21°C' },
-        { date: 'Day After', maxTemp: '26°C', minTemp: '19°C' }
-      ],
-      source: 'Fallback Weather Cache (Free)'
-    });
+    console.error('[weather] Open-Meteo unavailable:', err.message);
+    return res.status(503).json({ available: false, error: 'Weather currently unavailable', source: 'Open-Meteo' });
   }
 }

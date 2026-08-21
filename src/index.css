@@ -12,6 +12,43 @@ body {
   overflow-x: hidden;
 }
 
+#root {
+  min-height: 100dvh;
+  width: 100%;
+  overflow-x: clip;
+}
+
+img, video, canvas {
+  max-width: 100%;
+}
+
+input, select, textarea, button {
+  font: inherit;
+}
+
+button, a, input, select, textarea {
+  -webkit-tap-highlight-color: transparent;
+}
+
+@media (max-width: 767px) {
+  input, select, textarea {
+    font-size: 16px;
+  }
+
+  button, a[role="button"] {
+    min-height: 44px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    scroll-behavior: auto !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
 /* Custom Utilities for Liquid Glass */
 @layer utilities {
   .glass-panel {

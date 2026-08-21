@@ -6,6 +6,7 @@ import Header from './components/Header';
 import Footer from './components/Footer';
 import GenericPage from './components/GenericPage';
 import NotFoundPage from './components/NotFoundPage';
+import ProtectedRoute from './components/ProtectedRoute';
 
 // Route-level code splitting — each page loads only when visited.
 const HomePage = lazy(() => import('./components/HomePage'));
@@ -69,14 +70,14 @@ function App() {
               <Route path="/places/:slug" element={<PlaceDetailPage />} />
               <Route path="/destinations/:slug" element={<PlaceDetailPage />} />
               <Route path="/suggest-place" element={<SuggestPlacePage />} />
-              <Route path="/favorites" element={<FavoritesPage />} />
-              <Route path="/account/saved" element={<FavoritesPage />} />
-              <Route path="/admin" element={<AdminDashboardPage />} />
+              <Route path="/favorites" element={<ProtectedRoute><FavoritesPage /></ProtectedRoute>} />
+              <Route path="/account/saved" element={<ProtectedRoute><FavoritesPage /></ProtectedRoute>} />
+              <Route path="/admin" element={<ProtectedRoute admin><AdminDashboardPage /></ProtectedRoute>} />
 
-              <Route path="/plan-trip" element={<PlanTripPage />} />
-              <Route path="/my-trips" element={<MyTripsPage />} />
+              <Route path="/plan-trip" element={<ProtectedRoute><PlanTripPage /></ProtectedRoute>} />
+              <Route path="/my-trips" element={<ProtectedRoute><MyTripsPage /></ProtectedRoute>} />
               <Route path="/trips" element={<TripsGalleryPage />} />
-              <Route path="/account" element={<UserAccountPage />} />
+              <Route path="/account" element={<ProtectedRoute><UserAccountPage /></ProtectedRoute>} />
               <Route path="/guides" element={<GuidesListingPage />} />
               <Route path="/offers" element={<SeasonalOffersPage />} />
 

@@ -40,8 +40,9 @@ export default async function handler(req, res) {
 
   // POST: Toggle / Add Favorite
   if (req.method === 'POST') {
-    const { place_id, place_name, place_image, place_price } = req.body || {};
+    const { place_id, item_type = 'destination', provider, provider_id } = req.body || {};
     if (!place_id) return res.status(400).json({ error: 'Place ID is required.' });
+    if (!['destination', 'hotel', 'attraction', 'experience'].includes(item_type)) return res.status(400).json({ error: 'Unsupported favorite type.' });
 
     try {
       const existing = await favoritesColl.findOne({
@@ -59,9 +60,9 @@ export default async function handler(req, res) {
       const newFav = {
         user_id: authUser.sub,
         place_id,
-        place_name: place_name || 'Sanctuary',
-        place_image: place_image || '/images/tropical_beach.png',
-        place_price: place_price || '₹35,000',
+        item_type,
+        provider: provider || null,
+        provider_id: provider_id || null,
         created_at: new Date().toISOString()
       };
 

@@ -1,99 +1,46 @@
-# ============================================================================
-# Horizon Travels — self-hosted stack
-#   db        : PostgreSQL 16 + PostGIS (application + geographic data)
-#   api       : Express API (search, places, reviews, favorites, bookings…)
-#   web       : nginx serving the built frontend (proxies /api to the API)
-#   nominatim : SELF-HOSTED Nominatim (opt-in, huge initial import)
-#
-# Quick start:
-#   cp .env.example .env          # adjust secrets
-#   docker compose up -d db api web
-#   docker compose exec api npm run import:osm -- <extract>.osm.pbf   # see README
-#
-# Enable self-hosted geocoding:
-#   docker compose --profile nominatim up -d
-# ============================================================================
-
 name: horizon-travels
 
 services:
-  db:
-    image: postgis/postgis:16-3.4
+  mongo:
+    image: mongo:7
+    restart: unless-stopped
     environment:
-      POSTGRES_USER: ${POSTGRES_USER:-postgres}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
-      POSTGRES_DB: ${POSTGRES_DB:-horizon_travels}
-    ports:
-      - "${POSTGRES_PORT:-5432}:5432"
+      MONGO_INITDB_DATABASE: horizon_travels
     volumes:
-      - pgdata:/var/lib/postgresql/data
+      - mongo-data:/data/db
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres}"]
+      test: ["CMD", "mongosh", "--quiet", "--eval", "db.adminCommand('ping').ok"]
       interval: 5s
       timeout: 3s
       retries: 12
-    networks:
-      - horizon
-    restart: unless-stopped
 
   api:
-    build: ./server
+    build:
+      context: .
+      dockerfile: Dockerfile.api
+    restart: unless-stopped
     environment:
-      PORT: 4000
       NODE_ENV: production
-      DATABASE_URL: postgres://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@db:5432/${POSTGRES_DB:-horizon_travels}
-      JWT_SECRET: ${JWT_SECRET:?Set JWT_SECRET in your .env}
+      PORT: 3002
+      MONGODB_URI: mongodb://mongo:27017/horizon_travels
+      JWT_SECRET: ${JWT_SECRET:?Set JWT_SECRET in .env}
       JWT_EXPIRES_IN: 7d
       CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:8081}
-      # Self-hosted Nominatim (used only for address geocoding)
-      NOMINATIM_URL: ${NOMINATIM_URL:-http://nominatim:8080}
-      NOMINATIM_EMAIL: ${NOMINATIM_EMAIL:-}
-      # Best-effort enrichment from Wikipedia / Wikimedia Commons (open data)
-      ENRICHMENT_ENABLED: "1"
-      TILE_URL: ${TILE_URL:-https://tile.openstreetmap.org/{z}/{x}/{y}.png}
-      TILE_ATTRIBUTION: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
     depends_on:
-      db:
+      mongo:
         condition: service_healthy
     ports:
-      - "${API_PORT:-4000}:4000"
-    networks:
-      - horizon
-    restart: unless-stopped
+      - "${API_PORT:-3002}:3002"
 
   web:
     build:
       context: .
       dockerfile: Dockerfile.web
+    restart: unless-stopped
     depends_on:
       - api
     ports:
       - "${WEB_PORT:-8081}:80"
-    networks:
-      - horizon
-    restart: unless-stopped
-
-  # Self-hosted Nominatim — OPT-IN (initial import is large and slow).
-  # docker compose --profile nominatim up -d
-  nominatim:
-    image: mediagis/nominatim:4.4
-    profiles: ["nominatim"]
-    environment:
-      PBF_URL: ${NOMINATIM_PBF_URL:-https://download.geofabrik.de/asia/india-latest.osm.pbf}
-      REPLICATION_URL: ${NOMINATIM_REPLICATION_URL:-https://download.geofabrik.de/asia/india-updates/}
-      IMPORT_WIKIPEDIA: "false"
-    ports:
-      - "${NOMINATIM_PORT:-8080}:8080"
-    volumes:
-      - nominatim-data:/var/lib/postgresql/16/main
-    networks:
-      - horizon
-    restart: unless-stopped
-
-networks:
-  horizon:
-    name: horizon-travels
 
 volumes:
-  pgdata:
-  nominatim-data:
+  mongo-data:

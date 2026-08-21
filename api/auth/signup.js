@@ -1,5 +1,5 @@
 import { connectToDatabase, COLLECTIONS } from '../../lib/db.js';
-import { hashPassword, signToken } from '../../lib/auth.js';
+import { hashPassword, signToken, sessionCookie } from '../../lib/auth.js';
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
@@ -8,11 +8,14 @@ export default async function handler(req, res) {
 
   const { email, password, name } = req.body || {};
 
-  if (!email || !password) {
-    return res.status(400).json({ error: 'Email and password are required.' });
+  if (!email || !password || !name) {
+    return res.status(400).json({ error: 'Name, email and password are required.' });
   }
-  if (typeof password !== 'string' || password.length < 6) {
-    return res.status(400).json({ error: 'Password must be at least 6 characters.' });
+  if (!/^\S+@\S+\.\S+$/.test(String(email)) || String(email).length > 254) {
+    return res.status(400).json({ error: 'Please enter a valid email address.' });
+  }
+  if (typeof password !== 'string' || password.length < 12 || !/[A-Za-z]/.test(password) || !/\d/.test(password)) {
+    return res.status(400).json({ error: 'Use a password of at least 12 characters with letters and numbers.' });
   }
 
   try {
@@ -34,14 +37,15 @@ export default async function handler(req, res) {
       avatar: '',
       preferences: {},
       role: 'user',
+      emailVerified: false,
       createdAt: new Date(),
     });
 
 
     const token = signToken({ _id: result.insertedId, email: normalizedEmail });
 
+    res.setHeader('Set-Cookie', sessionCookie(token));
     return res.status(201).json({
-      token,
       user: {
         id: result.insertedId.toString(),
         email: normalizedEmail,

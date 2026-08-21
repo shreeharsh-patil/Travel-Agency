@@ -166,10 +166,8 @@ export default function AdminDashboardPage() {
     e.preventDefault();
     setPostSaving(true);
     try {
-      const token = localStorage.getItem('horizon_token');
       const headers = {
-        'Content-Type': 'application/json',
-        ...(token ? { Authorization: `Bearer ${token}` } : {})
+        'Content-Type': 'application/json'
       };
       const url = '/api/blog';
       const method = editingPostId ? 'PATCH' : 'POST';
@@ -195,10 +193,8 @@ export default function AdminDashboardPage() {
   const handleDeletePost = async (postId) => {
     if (!window.confirm('Delete this article permanently?')) return;
     try {
-      const token = localStorage.getItem('horizon_token');
       const res = await fetch(`/api/blog?id=${postId}`, {
-        method: 'DELETE',
-        headers: token ? { Authorization: `Bearer ${token}` } : {}
+        method: 'DELETE'
       });
       if (res.ok) {
         notify('Article deleted.');

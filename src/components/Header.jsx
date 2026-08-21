@@ -16,12 +16,12 @@ export default function Header() {
 
     const activeCurrency = currencies.find((c) => c.code === currency) || currencies[0];
 
-    const checkUserSession = () => {
-        const token = localStorage.getItem('horizon_token');
-        const email = localStorage.getItem('horizon_user_email');
-        if (token) {
-            setUser({ email: email || 'Traveler' });
-        } else {
+    const checkUserSession = async () => {
+        try {
+            const res = await fetch('/api/auth/me');
+            const data = res.ok ? await res.json() : null;
+            setUser(data?.user || null);
+        } catch {
             setUser(null);
         }
     };
@@ -57,9 +57,8 @@ export default function Header() {
     ];
 
 
-    const handleLogout = () => {
-        localStorage.removeItem('horizon_token');
-        localStorage.removeItem('horizon_user_email');
+    const handleLogout = async () => {
+        await fetch('/api/auth/logout', { method: 'POST' });
         setUser(null);
     };
 

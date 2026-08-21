@@ -4,18 +4,6 @@
  * - `GET /api/currency-converter?amount=1&from=INR&to=USD,EUR,...` → live rates map for the site-wide currency switcher
  */
 
-const FALLBACK_INR_RATES = {
-  USD: 0.012,
-  EUR: 0.011,
-  GBP: 0.0094,
-  AED: 0.044,
-  SGD: 0.016,
-  JPY: 1.83,
-  AUD: 0.018,
-  CAD: 0.016,
-  CHF: 0.0105
-};
-
 export default async function handler(req, res) {
   if (req.method !== 'GET') {
     return res.status(405).json({ error: 'Method not allowed' });
@@ -42,39 +30,21 @@ export default async function handler(req, res) {
     const data = await response.json();
     const rates = data.rates || {};
 
-    // Backward-compatible single-INR response shape.
-    const inrValue = rates.INR || Math.round(numAmount * 84);
+    const inrValue = rates.INR ?? null;
 
     return res.status(200).json({
       success: true,
       amount: numAmount,
       from: baseCurrency,
       inrValue,
-      formattedINR: `₹${Math.round(inrValue).toLocaleString('en-IN')}`,
-      rate: (inrValue / numAmount).toFixed(2),
+      formattedINR: inrValue === null ? null : `₹${Math.round(inrValue).toLocaleString('en-IN')}`,
+      rate: inrValue === null ? null : (inrValue / numAmount).toFixed(6),
       rates,
-      source: 'Free Frankfurter Live Open API'
+      source: 'Frankfurter',
+      lastUpdated: data.date || null
     });
   } catch (err) {
-    console.error('[GET /api/currency-converter] Fallback triggered:', err);
-    // Estimated static rate fallback so the UI never breaks.
-    const fallbackRates = {};
-    targets.forEach((t) => {
-      if (t === 'INR') fallbackRates.INR = numAmount;
-      else if (baseCurrency === 'INR') fallbackRates[t] = numAmount * (FALLBACK_INR_RATES[t] || 0.012);
-      else fallbackRates[t] = numAmount * (t === 'EUR' ? 91 : 84) / (baseCurrency === 'EUR' ? 91 : 84);
-    });
-    const inrValue = fallbackRates.INR || Math.round(numAmount * 84);
-
-    return res.status(200).json({
-      success: true,
-      amount: numAmount,
-      from: baseCurrency,
-      inrValue,
-      formattedINR: `₹${inrValue.toLocaleString('en-IN')}`,
-      rate: (inrValue / numAmount).toFixed(2),
-      rates: fallbackRates,
-      source: 'Fallback Exchange Rate Cache (Free)'
-    });
+    console.error('[currency] Frankfurter unavailable:', err.message);
+    return res.status(503).json({ available: false, error: 'Currency rates currently unavailable', source: 'Frankfurter' });
   }
 }

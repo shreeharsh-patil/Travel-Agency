@@ -1,6 +1,6 @@
 /**
- * Live Flights & Airport Tracker API using OpenSky Network Open API.
- * Returns live aircraft state vectors and airport tracking.
+ * Optional live aircraft tracking via OpenSky. This route is deliberately not
+ * a flight-shopping endpoint: OpenSky does not provide fares or availability.
  */
 
 export default async function handler(req, res) {
@@ -8,7 +8,7 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  const { destination = 'goa' } = req.query || {};
+  const { destination = '' } = req.query || {};
 
   try {
     const url = 'https://opensky-network.org/api/states/all';
@@ -18,31 +18,19 @@ export default async function handler(req, res) {
       }
     });
 
-    let flightCount = 42;
-    if (response.ok) {
-      const data = await response.json();
-      if (Array.isArray(data.states)) {
-        flightCount = data.states.length;
-      }
-    }
+    if (!response.ok) throw new Error(`OpenSky returned ${response.status}`);
+    const data = await response.json();
 
     return res.status(200).json({
-      success: true,
+      available: true,
       destination,
-      status: 'Active VIP Terminals',
-      activeAirspaceFlights: flightCount,
-      estimatedFlightTime: '2h 15m from major hubs',
-      source: 'OpenSky Network Live Aviation Data'
+      activeAirspaceFlights: Array.isArray(data.states) ? data.states.length : 0,
+      source: 'OpenSky Network',
+      dataType: 'aircraft-tracking',
+      lastUpdated: data.time ? new Date(data.time * 1000).toISOString() : null
     });
   } catch (err) {
-    console.warn('[GET /api/flights] Error:', err);
-    return res.status(200).json({
-      success: true,
-      destination,
-      status: 'Active VIP Terminals',
-      activeAirspaceFlights: 36,
-      estimatedFlightTime: '2h 15m from major hubs',
-      source: 'Aviation Live Feed'
-    });
+    console.warn('[flights] OpenSky unavailable:', err.message);
+    return res.status(503).json({ available: false, error: 'Live aircraft tracking is temporarily unavailable.', source: 'OpenSky Network', dataType: 'aircraft-tracking' });
   }
 }

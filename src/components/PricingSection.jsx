@@ -26,10 +26,10 @@ export default function PricingSection() {
 
 
     return (
-        <section className="relative z-10 w-full bg-[#0c0c0c] py-20 px-4 md:px-10">
+        <section className="relative z-10 w-full bg-[#0c0c0c] py-14 px-4 md:py-20 md:px-10">
             <div className="max-w-7xl mx-auto">
-                <h2 className="font-serif text-white text-5xl md:text-7xl mb-6 text-center">Exclusive Stays</h2>
-                <p className="text-white/60 text-center max-w-2xl mx-auto mb-20 font-sans text-lg">
+                <h2 className="font-serif text-white text-4xl md:text-7xl mb-4 md:mb-6 text-center">Exclusive Stays</h2>
+                <p className="text-white/60 text-center max-w-2xl mx-auto mb-10 md:mb-20 font-sans text-base md:text-lg">
                     Discover our collection of award-winning private residences, designed for the ultimate escape.
                 </p>
 
@@ -37,7 +37,7 @@ export default function PricingSection() {
                     {cards.map((card, idx) => (
                         <div
                             key={idx}
-                            className={`group relative h-[520px] md:h-auto rounded-[40px] overflow-hidden transition-all duration-700 hover:scale-[1.02] cursor-pointer shadow-2xl
+                            className={`group relative h-[440px] sm:h-[480px] md:h-auto rounded-[28px] md:rounded-[40px] overflow-hidden transition-all duration-700 hover:scale-[1.02] cursor-pointer shadow-2xl
                                 ${card.dark ? 'bg-[#1a1a1a]' : 'bg-white'}
                                 ${card.accent ? 'border border-brand-gold/30' : ''}
                             `}
@@ -54,9 +54,9 @@ export default function PricingSection() {
                             </div>
 
                             {/* Content */}
-                            <div className={`p-8 h-[40%] flex flex-col justify-between ${card.dark ? 'text-white' : 'text-black'}`}>
+                            <div className={`p-6 md:p-8 h-[40%] flex flex-col justify-between ${card.dark ? 'text-white' : 'text-black'}`}>
                                 <div>
-                                    <h3 className="font-serif text-3xl mb-3">{card.title}</h3>
+                                    <h3 className="font-serif text-2xl md:text-3xl mb-2 md:mb-3">{card.title}</h3>
                                     <p className={`font-sans tracking-wide text-sm opacity-80 mb-4 ${card.accent ? 'text-brand-gold' : ''}`}>
                                         {card.price}
                                     </p>

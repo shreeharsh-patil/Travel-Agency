@@ -6,6 +6,7 @@ import { destinations } from '../data/destinations';
 export default function FavoritesPage() {
   const [favorites, setFavorites] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
 
   useEffect(() => {
     fetchFavorites();
@@ -13,16 +14,9 @@ export default function FavoritesPage() {
 
   const fetchFavorites = async () => {
     setLoading(true);
-    const token = localStorage.getItem('horizon_token');
-    if (!token) {
-      setLoading(false);
-      return;
-    }
-
     try {
-      const res = await fetch('/api/favorites', {
-        headers: { Authorization: `Bearer ${token}` }
-      });
+      const res = await fetch('/api/favorites');
+      setIsLoggedIn(res.status !== 401);
       if (res.ok) {
         const data = await res.json();
         
@@ -49,21 +43,15 @@ export default function FavoritesPage() {
   };
 
   const removeFavorite = async (placeId) => {
-    const token = localStorage.getItem('horizon_token');
-    if (!token) return;
-
     try {
       await fetch(`/api/favorites?place_id=${placeId}`, {
-        method: 'DELETE',
-        headers: { Authorization: `Bearer ${token}` }
+        method: 'DELETE'
       });
       setFavorites(prev => prev.filter(item => item.id !== placeId));
     } catch (err) {
       console.error('Remove favorite error:', err);
     }
   };
-
-  const isLoggedIn = Boolean(localStorage.getItem('horizon_token'));
 
   return (
     <section className="min-h-screen w-full bg-[#0c0c0c] pt-32 pb-24 px-4 sm:px-8">

@@ -13,8 +13,8 @@ export default function HomePage() {
         SCROLL TRACK: 300vh height total.
         Inside we have a STICKY container for the hero.
       */}
-            <div ref={containerRef} className="relative h-[300vh]">
-                <div className="sticky top-0 h-screen w-full overflow-hidden">
+            <div ref={containerRef} className="relative h-[190svh] md:h-[300vh]">
+                <div className="sticky top-0 h-[100svh] w-full overflow-hidden">
                     {/* Pass the container ref so HeroCanvas can use it as a trigger if needed, 
               or simply rely on its internal logic knowing it's sticky */}
                     <HeroCanvas scrollTrackRef={containerRef} />

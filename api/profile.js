@@ -1,6 +1,5 @@
-import { ObjectId } from 'mongodb';
 import { connectToDatabase, COLLECTIONS } from '../lib/db.js';
-import { getTokenFromReq, verifyToken } from '../lib/auth.js';
+import { authenticateRequest } from '../lib/requestAuth.js';
 
 /**
  * PATCH /api/auth/me — update the signed-in user's profile
@@ -11,19 +10,9 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  const token = getTokenFromReq(req);
-  if (!token) {
-    return res.status(401).json({ error: 'Not authenticated.' });
-  }
-
-  let payload;
-  try {
-    payload = verifyToken(token);
-  } catch {
-    return res.status(401).json({ error: 'Invalid or expired session.' });
-  }
-
-  const { name, phone, avatar, preferences } = req.body || {};
+  const auth = await authenticateRequest(req, res);
+  if (!auth) return;
+  const { name, phone, avatar, homeCountry, preferredCurrency, preferredLanguage, interests, travelStyle, typicalBudget, dietaryPreferences, accessibilityPreferences, preferences } = req.body || {};
   const update = { updatedAt: new Date() };
 
   // Blank name/phone are ignored so a stale empty form never wipes a
@@ -31,8 +20,16 @@ export default async function handler(req, res) {
   if (name !== undefined && String(name).trim() !== '') update.name = String(name).trim().slice(0, 80);
   if (phone !== undefined && String(phone).trim() !== '') update.phone = String(phone).trim().slice(0, 30);
   if (avatar !== undefined) update.avatar = String(avatar).trim().slice(0, 500);
-  if (preferences !== undefined && preferences && typeof preferences === 'object') {
-    update.preferences = preferences;
+  const stringFields = { homeCountry, preferredCurrency, preferredLanguage, travelStyle, dietaryPreferences, accessibilityPreferences };
+  for (const [key, value] of Object.entries(stringFields)) if (value !== undefined) update[key] = String(value).trim().slice(0, 120);
+  const effectiveInterests = interests ?? preferences?.interests;
+  if (effectiveInterests !== undefined) update.interests = Array.isArray(effectiveInterests) ? effectiveInterests.map((v) => String(v).trim().slice(0, 40)).filter(Boolean).slice(0, 20) : [];
+  if (travelStyle === undefined && preferences?.travelStyle !== undefined) update.travelStyle = String(preferences.travelStyle).trim().slice(0, 120);
+  if (typicalBudget === undefined && preferences?.budgetINR !== undefined) update.typicalBudget = Number(preferences.budgetINR) || 0;
+  if (typicalBudget !== undefined) {
+    const budget = Number(typicalBudget);
+    if (!Number.isFinite(budget) || budget < 0 || budget > 10_000_000) return res.status(400).json({ error: 'Typical budget is invalid.' });
+    update.typicalBudget = budget;
   }
 
   const changed = Object.keys(update).filter((k) => k !== 'updatedAt');
@@ -42,12 +39,7 @@ export default async function handler(req, res) {
 
   try {
     const { db } = await connectToDatabase();
-    // Match either a real Mongo ObjectId or the string _id used by the
-    // local JSON fallback database.
-    let idFilter = { _id: payload.sub };
-    if (typeof payload.sub === 'string' && /^[a-fA-F0-9]{24}$/.test(payload.sub)) {
-      idFilter = { _id: { $in: [new ObjectId(payload.sub), payload.sub] } };
-    }
+    const idFilter = { _id: auth.user._id };
 
     const result = await db
       .collection(COLLECTIONS.users)
@@ -59,7 +51,7 @@ export default async function handler(req, res) {
 
     const user = await db
       .collection(COLLECTIONS.users)
-      .findOne(idFilter, { projection: { password: 0 } });
+      .findOne(idFilter, { projection: { passwordHash: 0, passwordResetTokenHash: 0 } });
 
     return res.status(200).json({
       message: 'Profile updated successfully.',
@@ -69,7 +61,7 @@ export default async function handler(req, res) {
         name: user.name || '',
         phone: user.phone || '',
         avatar: user.avatar || '',
-        preferences: user.preferences || {},
+        homeCountry: user.homeCountry || '', preferredCurrency: user.preferredCurrency || '', preferredLanguage: user.preferredLanguage || '', interests: user.interests || [], travelStyle: user.travelStyle || '', typicalBudget: user.typicalBudget ?? null, dietaryPreferences: user.dietaryPreferences || '', accessibilityPreferences: user.accessibilityPreferences || '',
         createdAt: user.createdAt,
       },
     });

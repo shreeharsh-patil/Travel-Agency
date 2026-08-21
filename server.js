@@ -1,17 +1,35 @@
 import express from 'express';
 import dotenv from 'dotenv';
+import helmet from 'helmet';
+import cors from 'cors';
 import { routes } from './lib/router.js';
 import { rateLimit } from './lib/rateLimit.js';
 
 dotenv.config();
 
 const app = express();
+const allowedOrigins = (process.env.CORS_ORIGINS || 'http://localhost:5173').split(',').map((origin) => origin.trim());
+app.disable('x-powered-by');
+app.use(helmet({ contentSecurityPolicy: false }));
+app.use(cors({ origin: allowedOrigins, credentials: true }));
 app.use(express.json({ limit: '4mb' }));
+
+app.get('/api/health', async (_req, res) => {
+  try {
+    const { connectToDatabase } = await import('./lib/db.js');
+    const { db } = await connectToDatabase();
+    await db.command({ ping: 1 });
+    res.json({ status: 'ok', database: 'mongodb', integrations: { weather: 'Open-Meteo', currency: 'Frankfurter', flightTracking: 'OpenSky (optional)' } });
+  } catch {
+    res.status(503).json({ status: 'degraded', database: 'unavailable' });
+  }
+});
 
 for (const { method, path, handler } of routes) {
   // Rate-limit mutating routes to guard against brute force / abuse.
   const isMutating = ['POST', 'PATCH', 'PUT', 'DELETE'].includes(method);
-  const wrapped = isMutating ? rateLimit({ windowMs: 60_000, max: 120 })(handler) : handler;
+  const isAuth = path.startsWith('/api/auth/');
+  const wrapped = isMutating ? rateLimit({ windowMs: 60_000, max: isAuth ? 10 : 120 })(handler) : handler;
 
   app[method.toLowerCase()](path, async (req, res) => {
     try {
