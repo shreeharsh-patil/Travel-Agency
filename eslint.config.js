@@ -8,7 +8,7 @@ export default defineConfig([
   globalIgnores(['dist']),
   {
     // Server-side code (MongoDB API functions, dev server) uses Node globals.
-    files: ['api/**/*.js', 'lib/**/*.js', 'netlify/**/*.js', 'server.js', 'server/**/*.js'],
+    files: ['api/**/*.js', 'serverless-handlers/**/*.js', 'lib/**/*.js', 'netlify/**/*.js', 'server.js', 'server/**/*.js'],
     languageOptions: {
       ecmaVersion: 'latest',
       sourceType: 'module',

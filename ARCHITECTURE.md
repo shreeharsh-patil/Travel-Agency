@@ -5,6 +5,8 @@
 The browser is a Vite/React application and communicates with root `api/`
 handlers through `server.js` locally or the Vercel/Netlify dispatch adapters.
 MongoDB is the only persistence target. `lib/router.js` is the route registry.
+Vercel deploys only `api/[...path].js`; the implementation handlers live in
+`serverless-handlers/` so the Hobby function limit is not exceeded.
 
 ## Audit findings
 

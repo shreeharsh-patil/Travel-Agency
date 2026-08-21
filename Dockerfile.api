@@ -3,6 +3,7 @@ WORKDIR /app
 COPY package*.json ./
 RUN npm ci --omit=dev
 COPY api ./api
+COPY serverless-handlers ./serverless-handlers
 COPY lib ./lib
 COPY server.js ./
 EXPOSE 3002
