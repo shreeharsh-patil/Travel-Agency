@@ -489,7 +489,7 @@ export default function PlaceDetailPage() {
               </div>
               <button
                 onClick={() => setShowReserveModal(true)}
-                className="min-h-11 w-full sm:w-auto px-6 py-3 rounded-full bg-brand-gold text-black font-bold text-xs uppercase tracking-widest hover:bg-white transition-colors"
+                className="min-h-11 w-full sm:w-auto px-6 py-3 rounded-full bg-white text-black font-bold text-xs uppercase tracking-widest hover:bg-brand-gold transition-colors"
               >
                 Book Package ✨
               </button>
@@ -925,7 +925,7 @@ export default function PlaceDetailPage() {
 
               <button
                 onClick={() => setShowReserveModal(true)}
-                className="w-full py-3.5 rounded-full bg-brand-gold text-black text-xs font-bold uppercase tracking-widest hover:bg-white transition-all shadow-lg"
+                className="w-full py-3.5 rounded-full bg-white text-black text-xs font-bold uppercase tracking-widest hover:bg-brand-gold transition-all shadow-lg"
               >
                 Reserve Stay in {place.name || place.title}
               </button>
@@ -1186,7 +1186,7 @@ export default function PlaceDetailPage() {
                 <button
                   type="submit"
                   disabled={reviewSubmitting}
-                  className="w-full py-3.5 rounded-full bg-brand-gold text-black font-bold text-xs uppercase tracking-widest hover:bg-white transition-all shadow-lg"
+                  className="w-full py-3.5 rounded-full bg-white text-black font-bold text-xs uppercase tracking-widest hover:bg-brand-gold transition-all shadow-lg"
                 >
                   {reviewSubmitting ? 'Submitting...' : 'Post Review ✨'}
                 </button>
@@ -1261,7 +1261,7 @@ export default function PlaceDetailPage() {
                 <button
                   type="submit"
                   disabled={commentSubmitting}
-                  className="w-full py-3.5 rounded-full bg-brand-gold text-black font-bold text-xs uppercase tracking-widest hover:bg-white transition-all shadow-lg"
+                  className="w-full py-3.5 rounded-full bg-white text-black font-bold text-xs uppercase tracking-widest hover:bg-brand-gold transition-all shadow-lg"
                 >
                   {commentSubmitting ? 'Posting...' : 'Post Comment 💬'}
                 </button>
