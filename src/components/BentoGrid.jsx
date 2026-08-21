@@ -1,12 +1,40 @@
 
-import React from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { motion } from "framer-motion";
 import { bentoCards } from "../data/travelData";
 
 const Card = ({ card, index }) => {
+    const cardRef = useRef(null);
+    const [loadVideo, setLoadVideo] = useState(false);
+    const [useMotionMedia, setUseMotionMedia] = useState(false);
     const isLarge = card.size === "large";
     const isWide = card.size === "wide";
     const isPenthouse = card.id === "penthouse";
+
+    useEffect(() => {
+        const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
+        const updateMediaPreference = () => setUseMotionMedia(!reducedMotion.matches);
+        updateMediaPreference();
+        reducedMotion.addEventListener('change', updateMediaPreference);
+        return () => {
+            reducedMotion.removeEventListener('change', updateMediaPreference);
+        };
+    }, []);
+
+    useEffect(() => {
+        if (!useMotionMedia || !cardRef.current) return undefined;
+        const observer = new IntersectionObserver(
+            ([entry]) => {
+                if (entry.isIntersecting) {
+                    setLoadVideo(true);
+                    observer.disconnect();
+                }
+            },
+            { rootMargin: '300px 0px' }
+        );
+        observer.observe(cardRef.current);
+        return () => observer.disconnect();
+    }, [useMotionMedia]);
 
     // Grid span logic
     let spanClasses = "col-span-1 min-h-[330px] md:row-span-1 md:min-h-0 aspect-[4/5]";
@@ -18,6 +46,7 @@ const Card = ({ card, index }) => {
 
     return (
         <motion.div
+            ref={cardRef}
             initial={{ opacity: 0, y: 30 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
@@ -26,15 +55,27 @@ const Card = ({ card, index }) => {
         >
             {/* Video Background */}
             <div className="absolute inset-0 z-0">
-                <video
-                    autoPlay
-                    loop
-                    muted
-                    playsInline
-                    className={`h-full w-full object-cover transition-transform duration-[1.5s] ease-out group-hover:scale-105 ${isPenthouse ? 'opacity-80' : ''}`}
-                >
-                    <source src={card.videoPath} type="video/mp4" />
-                </video>
+                {loadVideo ? (
+                    <video
+                        autoPlay
+                        loop
+                        muted
+                        playsInline
+                        preload="metadata"
+                        poster={card.posterPath}
+                        className={`h-full w-full object-cover transition-transform duration-[1.5s] ease-out group-hover:scale-105 ${isPenthouse ? 'opacity-80' : ''}`}
+                    >
+                        <source src={card.videoPath} type="video/mp4" />
+                    </video>
+                ) : (
+                    <img
+                        src={card.posterPath}
+                        alt=""
+                        loading="lazy"
+                        decoding="async"
+                        className={`h-full w-full object-cover transition-transform duration-[1.5s] ease-out group-hover:scale-105 ${isPenthouse ? 'opacity-80' : ''}`}
+                    />
+                )}
                 {/* Gradient Overlay Base */}
                 <div className={`absolute inset-0 bg-gradient-to-t ${isPenthouse ? 'from-black/80 via-black/40 to-transparent' : 'from-black/60 via-black/20 to-transparent'} opacity-60 transition-opacity duration-700 ease-in-out group-hover:opacity-40`} />
             </div>
