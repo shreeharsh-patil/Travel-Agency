@@ -57,8 +57,23 @@ const INITIAL_AUTHENTIC_REVIEWS = [
 ];
 
 export default async function handler(req, res) {
-  const { db } = await connectToDatabase();
-  const reviewsColl = db.collection(COLLECTIONS.reviews);
+  let reviewsColl;
+  try {
+    const { db } = await connectToDatabase();
+    reviewsColl = db.collection(COLLECTIONS.reviews);
+  } catch {
+    if (req.method === 'GET') {
+      return res.status(200).json({
+        available: false,
+        reviews: [],
+        totalCount: 0,
+        averageRating: null,
+        ratingBreakdown: [],
+        error: 'Horizon reviews are temporarily unavailable.'
+      });
+    }
+    return res.status(503).json({ error: 'Reviews are temporarily unavailable.' });
+  }
 
   // GET: Fetch reviews for a place (or all reviews for admin moderation)
   if (req.method === 'GET') {
@@ -77,10 +92,10 @@ export default async function handler(req, res) {
       let reviews = await cursor.toArray();
 
       // Seed initial authentic reviews if empty for place
-      if (reviews.length === 0 && place_id) {
+      if (process.env.LEGACY_DEMO_MODE === '1' && reviews.length === 0 && place_id) {
         const authenticForPlace = INITIAL_AUTHENTIC_REVIEWS.filter(r => r.place_id === place_id);
         reviews = authenticForPlace;
-      } else if (reviews.length === 0 && !place_id) {
+      } else if (process.env.LEGACY_DEMO_MODE === '1' && reviews.length === 0 && !place_id) {
         reviews = INITIAL_AUTHENTIC_REVIEWS;
       }
 

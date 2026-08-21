@@ -175,6 +175,12 @@ export default function PlaceDetailPage() {
 
   const checkIsSaved = useCallback(async () => {
     try {
+      const session = await fetch('/api/auth/me');
+      const sessionData = session.ok ? await session.json() : null;
+      if (!sessionData?.user) {
+        setIsSaved(false);
+        return;
+      }
       const res = await fetch('/api/favorites');
       if (res.ok) {
         const data = await res.json();
@@ -205,6 +211,12 @@ export default function PlaceDetailPage() {
 
   const toggleFavorite = async () => {
     try {
+      const session = await fetch('/api/auth/me');
+      const sessionData = session.ok ? await session.json() : null;
+      if (!sessionData?.user) {
+        alert('Please log in to save places to your favorites.');
+        return;
+      }
       const res = await fetch('/api/favorites', {
         method: 'POST',
         headers: {

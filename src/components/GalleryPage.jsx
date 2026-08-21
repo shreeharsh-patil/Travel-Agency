@@ -20,6 +20,7 @@ export default function GalleryPage() {
                 return data;
             })
             .then((data) => {
+                if (data.available === false) throw new Error(data.error || 'Gallery is temporarily unavailable.');
                 if (!controller.signal.aborted && Array.isArray(data.images)) {
                     setImages(data.images);
                 }

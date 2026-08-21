@@ -85,8 +85,21 @@ function buildThread(flatComments) {
 }
 
 export default async function handler(req, res) {
-  const { db } = await connectToDatabase();
-  const commentsColl = db.collection(COLLECTIONS.comments);
+  let commentsColl;
+  try {
+    const { db } = await connectToDatabase();
+    commentsColl = db.collection(COLLECTIONS.comments);
+  } catch {
+    if (req.method === 'GET') {
+      return res.status(200).json({
+        available: false,
+        comments: [],
+        totalCount: 0,
+        error: 'Traveler comments are temporarily unavailable.'
+      });
+    }
+    return res.status(503).json({ error: 'Comments are temporarily unavailable.' });
+  }
 
   // GET: Fetch comments for a place (approved only by default), threaded
   if (req.method === 'GET') {
@@ -102,7 +115,7 @@ export default async function handler(req, res) {
       let comments = await cursor.toArray();
 
       // Seed initial authentic comments if empty (persist them so replies/likes work)
-      if (comments.length === 0 && place_id) {
+      if (process.env.LEGACY_DEMO_MODE === '1' && comments.length === 0 && place_id) {
         const initialForPlace = INITIAL_COMMENTS.filter((c) => c.place_id === place_id);
         for (const c of initialForPlace) {
           const existing = await commentsColl.findOne({ _id: c._id });
@@ -111,7 +124,7 @@ export default async function handler(req, res) {
           }
         }
         comments = initialForPlace;
-      } else if (comments.length === 0 && !place_id) {
+      } else if (process.env.LEGACY_DEMO_MODE === '1' && comments.length === 0 && !place_id) {
         comments = INITIAL_COMMENTS;
       }
 

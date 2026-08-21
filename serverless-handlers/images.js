@@ -17,7 +17,11 @@ export default async function handler(req, res) {
       return res.status(200).json({ images });
     } catch (err) {
       console.error('[images]', err);
-      return res.status(500).json({ error: 'Could not load images.' });
+      return res.status(200).json({
+        available: false,
+        images: [],
+        error: 'Verified travel photos are temporarily unavailable.'
+      });
     }
   }
 

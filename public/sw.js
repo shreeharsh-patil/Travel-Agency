@@ -1,5 +1,5 @@
 /* Horizon Travels Service Worker — offline support & asset caching */
-const CACHE = 'horizon-travels-v1';
+const CACHE = 'horizon-travels-v2';
 const CORE = ['/', '/index.html', '/manifest.webmanifest'];
 
 self.addEventListener('install', (event) => {
