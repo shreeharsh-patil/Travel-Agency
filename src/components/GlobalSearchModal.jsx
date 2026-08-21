@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Link } from 'react-router-dom';
 import CurrencyPrice from './CurrencyPrice';
 import { useCurrency } from '../contexts/CurrencyContext';
+import SafeImage from './SafeImage';
 
 export default function GlobalSearchModal({ isOpen, onClose }) {
   const { currency, currencies } = useCurrency();
@@ -180,7 +181,7 @@ export default function GlobalSearchModal({ isOpen, onClose }) {
                           onClick={onClose}
                           className="p-3.5 rounded-2xl bg-white/5 border border-white/10 hover:border-brand-gold/40 hover:bg-white/10 transition-all flex items-center gap-3.5 group"
                         >
-                          <img
+                          <SafeImage
                             src={place.image}
                             alt={place.name}
                             loading="lazy"
