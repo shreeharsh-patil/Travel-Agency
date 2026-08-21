@@ -10,7 +10,7 @@ export default function HomePage() {
                 <img
                     src="/images/amalfi_scenic.png"
                     alt="Amalfi Coast at golden hour"
-                    fetchPriority="high"
+                    fetchpriority="high"
                     className="absolute inset-0 h-full w-full object-cover opacity-80"
                 />
                 <div className="absolute inset-0 bg-gradient-to-b from-black/35 via-black/10 to-black/80" />
