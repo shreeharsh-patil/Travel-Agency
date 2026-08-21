@@ -123,7 +123,7 @@ export default function Footer() {
 
                 {/* BOTTOM UTILS */}
                 <div className="flex flex-col md:flex-row justify-between items-center mt-10 text-[10px] text-white/40 font-sans uppercase tracking-widest">
-                    <p>© 2026</p>
+                    <p>© 2026 Made by Shreeharsh</p>
                     <div className="flex gap-8 mt-4 md:mt-0">
                         <Link to="/privacy" className="hover:text-white transition-colors">Privacy Policy</Link>
                         <Link to="/terms" className="hover:text-white transition-colors">Terms</Link>

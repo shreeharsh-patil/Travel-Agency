@@ -65,8 +65,8 @@ export default async function handler(req, res) {
   } catch (err) {
     console.error('[GET /api/external-places] Error:', err);
 
-    return res.status(200).json({
-      success: true,
+    return res.status(503).json({
+      success: false,
       query: q,
       resultsCount: 2,
       places: [

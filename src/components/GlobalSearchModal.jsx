@@ -213,7 +213,12 @@ export default function GlobalSearchModal({ isOpen, onClose }) {
                     </h5>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                       {externalPlaces.map((ext) => (
-                        <div key={ext.place_id} className="p-3 rounded-xl bg-white/5 border border-white/10 text-xs space-y-1">
+                        <Link
+                          key={ext.place_id}
+                          to={`/travel?search=${encodeURIComponent(ext.name)}`}
+                          onClick={onClose}
+                          className="block p-3 rounded-xl bg-white/5 border border-white/10 text-xs space-y-1 transition-colors hover:border-brand-gold/40 hover:bg-white/10"
+                        >
                           <div className="flex justify-between items-center">
                             <span className="font-serif text-white font-semibold truncate">{ext.name}</span>
                             <span className="text-[10px] font-mono text-brand-gold bg-brand-gold/10 px-2 py-0.5 rounded-full font-bold">
@@ -226,7 +231,7 @@ export default function GlobalSearchModal({ isOpen, onClose }) {
                               GPS: {Number(ext.coordinates.lat).toFixed(2)}°, {Number(ext.coordinates.lon).toFixed(2)}°
                             </div>
                           )}
-                        </div>
+                        </Link>
                       ))}
                     </div>
                   </div>

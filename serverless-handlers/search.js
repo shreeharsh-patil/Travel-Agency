@@ -19,14 +19,15 @@ export default async function handler(req, res) {
   }
 
   try {
-    const { db } = await connectToDatabase();
-    const placesColl = db.collection(COLLECTIONS.places);
-
-    // Fetch approved places from DB
-    const dbPlacesCursor = await placesColl.find({
-      status: 'APPROVED'
-    });
-    const dbPlaces = await dbPlacesCursor.toArray();
+    // Curated destinations remain searchable when MongoDB is temporarily
+    // unavailable. Community places are included again after it reconnects.
+    let dbPlaces = [];
+    try {
+      const { db } = await connectToDatabase();
+      dbPlaces = await db.collection(COLLECTIONS.places).find({ status: 'APPROVED' }).toArray();
+    } catch (error) {
+      console.warn('[search] MongoDB unavailable; searching curated destinations only:', error.message);
+    }
 
     // Merge static destinations and approved DB places
     const allPlacesMap = new Map();
@@ -85,7 +86,7 @@ export default async function handler(req, res) {
       return nameMatch || titleMatch || countryMatch || cityMatch || categoryMatch || descMatch;
     });
 
-    if (matchedPlaces.length === 0 && query.length >= 2) {
+    if (process.env.LEGACY_DEMO_MODE === '1' && matchedPlaces.length === 0 && query.length >= 2) {
       const formattedName = query.replace(/\b\w/g, l => l.toUpperCase());
       const originalImage = await fetchOriginalPlaceImage(formattedName);
       const slug = query.replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');

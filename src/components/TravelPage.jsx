@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Link } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import { destinations } from '../data/destinations';
 import { parseINR } from '../utils/currency';
 import ReservationForm from './ReservationForm';
@@ -9,6 +9,7 @@ import { DestinationGridSkeleton } from './Skeletons';
 import SafeImage from './SafeImage';
 
 export default function TravelPage() {
+    const [searchParams] = useSearchParams();
     const [selectedDestination, setSelectedDestination] = useState(null);
     const [allPlaces, setAllPlaces] = useState(destinations);
     const [searchQuery, setSearchQuery] = useState('');
@@ -18,6 +19,10 @@ export default function TravelPage() {
     useEffect(() => {
         fetchPublicPlaces();
     }, []);
+
+    useEffect(() => {
+        setSearchQuery(searchParams.get('search') || '');
+    }, [searchParams]);
 
     const fetchPublicPlaces = async () => {
         setLoading(true);
