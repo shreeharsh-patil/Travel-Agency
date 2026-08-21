@@ -7,6 +7,7 @@ import PlaceMap from './PlaceMap';
 import CurrencyPrice from './CurrencyPrice';
 import VisaChecker from './VisaChecker';
 import { PlaceDetailSkeleton } from './Skeletons';
+import SafeImage from './SafeImage';
 
 export default function PlaceDetailPage() {
   const { slug } = useParams();
@@ -116,8 +117,8 @@ export default function PlaceDetailPage() {
       setPlace(data.place);
 
       const placeId = data.place.slug || data.place.id || slug;
-      const placeLat = data.place.lat || 15.2993;
-      const placeLon = data.place.lon || 74.124;
+      const placeLat = Number(data.place.lat);
+      const placeLon = Number(data.place.lon);
 
       // Fetch reviews
       const revRes = await fetch(`/api/reviews?place_id=${placeId}`);
@@ -140,11 +141,19 @@ export default function PlaceDetailPage() {
         .then(w => setWeatherData(w))
         .catch(() => {});
 
-      // Fetch solar photography times
-      fetch(`/api/sun-times?lat=${placeLat}&lon=${placeLon}`)
-        .then(r => r.json())
-        .then(s => setSunTimesData(s))
-        .catch(() => {});
+      // Only request location services when this place actually has
+      // coordinates. Never silently use another destination's location.
+      if (Number.isFinite(placeLat) && Number.isFinite(placeLon)) {
+        fetch(`/api/sun-times?lat=${placeLat}&lon=${placeLon}`)
+          .then(r => r.json())
+          .then(s => setSunTimesData(s))
+          .catch(() => {});
+
+        fetch(`/api/uv-index?lat=${placeLat}&lon=${placeLon}`)
+          .then(r => r.json())
+          .then(u => setUvIndex(u))
+          .catch(() => {});
+      }
 
       // Fetch free attractions
       fetch(`/api/free-attractions?destination=${data.place.name || slug}`)
@@ -155,24 +164,6 @@ export default function PlaceDetailPage() {
       // Fetch trip expense estimate (INR) — handled in a dedicated effect
       // so changing days/travellers doesn't reload the whole page.
 
-      // Fetch UV index for sun safety
-      fetch(`/api/uv-index?lat=${placeLat}&lon=${placeLon}`)
-        .then(r => r.json())
-        .then(u => setUvIndex(u))
-        .catch(() => {});
-
-      const weatherRes = await fetch(`/api/weather?city=${slug}`);
-      if (weatherRes.ok) {
-        const wData = await weatherRes.json();
-        setWeatherData(wData);
-      }
-
-      // Fetch free attractions
-      const freeRes = await fetch(`/api/free-attractions?destination=${slug}`);
-      if (freeRes.ok) {
-        const fData = await freeRes.json();
-        setFreeAttractions(fData.attractions || []);
-      }
     } catch (err) {
       console.error('Fetch place detail error:', err);
       setError('Could not load place details.');
@@ -183,12 +174,8 @@ export default function PlaceDetailPage() {
 
 
   const checkIsSaved = useCallback(async () => {
-    const token = localStorage.getItem('horizon_token');
-    if (!token) return;
     try {
-      const res = await fetch('/api/favorites', {
-        headers: { Authorization: `Bearer ${token}` }
-      });
+      const res = await fetch('/api/favorites');
       if (res.ok) {
         const data = await res.json();
         setIsSaved(data.placeIds && data.placeIds.includes(slug));
@@ -217,18 +204,11 @@ export default function PlaceDetailPage() {
   }, [place, slug, expenseDays, expenseTravellers]);
 
   const toggleFavorite = async () => {
-    const token = localStorage.getItem('horizon_token');
-    if (!token) {
-      alert('Please log in to save places to your favorites.');
-      return;
-    }
-
     try {
       const res = await fetch('/api/favorites', {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`
+          'Content-Type': 'application/json'
         },
         body: JSON.stringify({
           place_id: slug,
@@ -239,7 +219,9 @@ export default function PlaceDetailPage() {
       });
 
       const data = await res.json();
-      if (res.ok) {
+      if (res.status === 401) {
+        alert('Please log in to save places to your favorites.');
+      } else if (res.ok) {
         setIsSaved(data.saved);
       }
     } catch (err) {
@@ -253,19 +235,11 @@ export default function PlaceDetailPage() {
     setReviewError(null);
     setReviewSuccess(null);
 
-    const token = localStorage.getItem('horizon_token');
-    if (!token) {
-      setReviewError('Please log in to submit a review.');
-      setReviewSubmitting(false);
-      return;
-    }
-
     try {
       const res = await fetch('/api/reviews', {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`
+          'Content-Type': 'application/json'
         },
         body: JSON.stringify({
           place_id: place.slug || place.id || slug,
@@ -300,19 +274,11 @@ export default function PlaceDetailPage() {
     setCommentError(null);
     setCommentSuccess(null);
 
-    const token = localStorage.getItem('horizon_token');
-    if (!token) {
-      setCommentError('Please log in to comment on this destination.');
-      setCommentSubmitting(false);
-      return;
-    }
-
     try {
       const res = await fetch('/api/comments', {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`
+          'Content-Type': 'application/json'
         },
         body: JSON.stringify({
           place_id: place.slug || place.id || slug,
@@ -341,11 +307,6 @@ export default function PlaceDetailPage() {
 
   // Like / unlike a comment (top-level or reply)
   const toggleCommentLike = async (comment) => {
-    const token = localStorage.getItem('horizon_token');
-    if (!token) {
-      alert('Please log in to like comments.');
-      return;
-    }
     if (commentLikeBusy[comment._id]) return;
 
     setCommentLikeBusy((prev) => ({ ...prev, [comment._id]: true }));
@@ -353,8 +314,7 @@ export default function PlaceDetailPage() {
       const res = await fetch('/api/comments', {
         method: 'PATCH',
         headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`
+          'Content-Type': 'application/json'
         },
         body: JSON.stringify({ id: comment._id, action: comment.likedByUser ? 'unlike' : 'like' })
       });
@@ -382,11 +342,6 @@ export default function PlaceDetailPage() {
 
   // Submit a reply to a comment
   const handleReplySubmit = async (parentComment) => {
-    const token = localStorage.getItem('horizon_token');
-    if (!token) {
-      alert('Please log in to reply to comments.');
-      return;
-    }
     if (!replyText.trim()) return;
 
     setReplySubmitting(true);
@@ -395,8 +350,7 @@ export default function PlaceDetailPage() {
       const res = await fetch('/api/comments', {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`
+          'Content-Type': 'application/json'
         },
         body: JSON.stringify({
           place_id: place.slug || place.id || slug,
@@ -469,7 +423,7 @@ export default function PlaceDetailPage() {
 
         {/* Hero Section */}
         <div className="relative h-[480px] sm:h-[540px] rounded-[40px] overflow-hidden border border-white/10 shadow-2xl">
-          <img
+          <SafeImage
             src={place.image || '/images/tropical_beach.png'}
             alt={place.name || place.title}
             className="w-full h-full object-cover"
@@ -551,7 +505,7 @@ export default function PlaceDetailPage() {
                 <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
                   {place.gallery.map((img, i) => (
                     <div key={i} className="h-40 rounded-2xl overflow-hidden border border-white/10 group">
-                      <img src={img} alt={`${place.name} gallery ${i}`} loading="lazy" decoding="async" className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
+                      <SafeImage src={img} alt={`${place.name} gallery ${i}`} loading="lazy" decoding="async" className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
                     </div>
                   ))}
                 </div>

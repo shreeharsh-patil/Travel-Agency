@@ -6,6 +6,7 @@ import { parseINR } from '../utils/currency';
 import ReservationForm from './ReservationForm';
 import CurrencyPrice from './CurrencyPrice';
 import { DestinationGridSkeleton } from './Skeletons';
+import SafeImage from './SafeImage';
 
 export default function TravelPage() {
     const [selectedDestination, setSelectedDestination] = useState(null);
@@ -133,7 +134,7 @@ export default function TravelPage() {
                                 transition={{ duration: 0.5, delay: idx * 0.05 }}
                                 className="group relative h-[480px] rounded-[36px] overflow-hidden border border-white/10 hover:border-brand-gold/40 transition-all duration-500 bg-[#121214] flex flex-col justify-end shadow-2xl"
                             >
-                                <img
+                                <SafeImage
                                     src={dest.image || '/images/tropical_beach.png'}
                                     alt={dest.name || dest.title}
                                     loading="lazy"

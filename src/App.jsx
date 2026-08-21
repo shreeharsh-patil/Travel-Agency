@@ -1,5 +1,5 @@
 import { ReactLenis } from '@studio-freight/react-lenis';
-import { useEffect, lazy, Suspense } from 'react';
+import { Fragment, useEffect, lazy, Suspense, useState } from 'react';
 import { BrowserRouter as Router, Routes, Route, useLocation } from 'react-router-dom';
 import { CurrencyProvider } from './contexts/CurrencyContext';
 import Header from './components/Header';
@@ -28,6 +28,8 @@ const SeasonalOffersPage = lazy(() => import('./components/SeasonalOffersPage'))
 const TripsGalleryPage = lazy(() => import('./components/TripsGalleryPage'));
 const HotelSearchPage = lazy(() => import('./components/HotelSearchPage'));
 const FlightSearchPage = lazy(() => import('./components/FlightSearchPage'));
+const LegalPage = lazy(() => import('./components/LegalPage'));
+const SitemapPage = lazy(() => import('./components/SitemapPage'));
 
 function PageLoader() {
   return (
@@ -45,15 +47,29 @@ function ScrollToTop() {
   return null;
 }
 
-function App() {
-  const lenisOptions = {
-    duration: 1.2,
-    easing: (t) => Math.min(1, 1.001 - Math.pow(2, -10 * t)),
-    smoothWheel: true,
-  };
+function SmoothScroll({ children }) {
+  const [enabled, setEnabled] = useState(false);
 
+  useEffect(() => {
+    const mobile = window.matchMedia('(max-width: 767px)');
+    const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
+    const update = () => setEnabled(!mobile.matches && !reducedMotion.matches);
+    update();
+    mobile.addEventListener('change', update);
+    reducedMotion.addEventListener('change', update);
+    return () => {
+      mobile.removeEventListener('change', update);
+      reducedMotion.removeEventListener('change', update);
+    };
+  }, []);
+
+  if (!enabled) return <Fragment>{children}</Fragment>;
+  return <ReactLenis root options={{ duration: 1.2, easing: (t) => Math.min(1, 1.001 - Math.pow(2, -10 * t)), smoothWheel: true }}>{children}</ReactLenis>;
+}
+
+function App() {
   return (
-    <ReactLenis root options={lenisOptions}>
+    <SmoothScroll>
       <Router>
         <CurrencyProvider>
           <div className="bg-[#0c0c0c] min-h-screen text-white selection:bg-white selection:text-black font-sans relative">
@@ -69,6 +85,9 @@ function App() {
               <Route path="/travel" element={<TravelPage />} />
               <Route path="/hotels" element={<HotelSearchPage />} />
               <Route path="/flights" element={<FlightSearchPage />} />
+              <Route path="/privacy" element={<LegalPage type="privacy" />} />
+              <Route path="/terms" element={<LegalPage type="terms" />} />
+              <Route path="/sitemap" element={<SitemapPage />} />
 
               {/* Real Data Platform Routes */}
               <Route path="/places/:slug" element={<PlaceDetailPage />} />
@@ -157,7 +176,7 @@ function App() {
           </div>
         </CurrencyProvider>
       </Router>
-    </ReactLenis>
+    </SmoothScroll>
   );
 }
 

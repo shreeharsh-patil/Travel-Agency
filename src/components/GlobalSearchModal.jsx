@@ -15,7 +15,7 @@ export default function GlobalSearchModal({ isOpen, onClose }) {
   const [externalPlaces, setExternalPlaces] = useState([]);
 
   useEffect(() => {
-    if (!query.trim()) {
+    if (!isOpen || !query.trim()) {
       setResults({ places: [], packages: [], experiences: [], guides: [] });
       setExternalPlaces([]);
       setLoading(false);
@@ -25,11 +25,12 @@ export default function GlobalSearchModal({ isOpen, onClose }) {
     setLoading(true);
     setError(null);
 
+    const controller = new AbortController();
     const timer = setTimeout(async () => {
       try {
         const [res, extRes] = await Promise.all([
-          fetch(`/api/search?q=${encodeURIComponent(query)}`),
-          fetch(`/api/external-places?q=${encodeURIComponent(query)}`)
+          fetch(`/api/search?q=${encodeURIComponent(query)}`, { signal: controller.signal }),
+          fetch(`/api/external-places?q=${encodeURIComponent(query)}`, { signal: controller.signal })
         ]);
 
         if (res.ok) {
@@ -42,15 +43,19 @@ export default function GlobalSearchModal({ isOpen, onClose }) {
           setExternalPlaces(extData.places || []);
         }
       } catch (err) {
+        if (err.name === 'AbortError') return;
         console.error('Search API error:', err);
         setError('Could not complete search. Please try again.');
       } finally {
-        setLoading(false);
+        if (!controller.signal.aborted) setLoading(false);
       }
     }, 300); // 300ms debounce
 
-    return () => clearTimeout(timer);
-  }, [query]);
+    return () => {
+      clearTimeout(timer);
+      controller.abort();
+    };
+  }, [isOpen, query]);
 
 
   if (!isOpen) return null;

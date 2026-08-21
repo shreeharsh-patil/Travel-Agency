@@ -22,11 +22,6 @@ export const CURRENCIES = [
 ];
 
 const STORAGE_KEY = 'horizon_currency';
-const FALLBACK_RATES = {
-  USD: 0.012, EUR: 0.011, GBP: 0.0094, AED: 0.044, SGD: 0.016,
-  JPY: 1.83, AUD: 0.018, CAD: 0.016, CHF: 0.0105
-};
-
 const CurrencyContext = createContext(null);
 
 export function CurrencyProvider({ children }) {
@@ -66,7 +61,12 @@ export function CurrencyProvider({ children }) {
     (amount) => {
       const inr = parseINR(amount);
       const meta = CURRENCIES.find((c) => c.code === currency) || CURRENCIES[0];
-      const rate = currency === 'INR' ? 1 : rates[currency] || FALLBACK_RATES[currency] || 1;
+      const rate = currency === 'INR' ? 1 : rates[currency];
+      if (!rate) {
+        return new Intl.NumberFormat('en-IN', {
+          style: 'currency', currency: 'INR', maximumFractionDigits: 0
+        }).format(inr);
+      }
       const value = inr * rate;
       try {
         return new Intl.NumberFormat(meta.locale, {
