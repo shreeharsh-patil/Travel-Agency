@@ -1,25 +1,37 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { galleryData as staticGalleryData } from '../data/galleryData';
+import { Link } from 'react-router-dom';
 
 export default function GalleryPage() {
     const [selectedId, setSelectedId] = useState(null);
-    const [images, setImages] = useState(staticGalleryData);
+    const [images, setImages] = useState([]);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState('');
 
-    // Load the gallery from MongoDB Atlas; fall back to the bundled
-    // images when the API is unavailable (e.g. GitHub Pages previews).
+    // The public gallery intentionally contains only records supplied by the
+    // content system. Bundled showcase artwork must never look like traveler
+    // or provider photography.
     useEffect(() => {
-        let cancelled = false;
-        fetch('/api/images')
-            .then((r) => (r.ok ? r.json() : Promise.reject(new Error('API unavailable'))))
+        const controller = new AbortController();
+        fetch('/api/images', { signal: controller.signal })
+            .then(async (r) => {
+                const data = await r.json().catch(() => ({}));
+                if (!r.ok) throw new Error(data.error || 'Gallery is temporarily unavailable.');
+                return data;
+            })
             .then((data) => {
-                if (!cancelled && Array.isArray(data.images) && data.images.length > 0) {
+                if (!controller.signal.aborted && Array.isArray(data.images)) {
                     setImages(data.images);
                 }
             })
-            .catch(() => {});
+            .catch((err) => {
+                if (err.name !== 'AbortError' && !controller.signal.aborted) setError(err.message);
+            })
+            .finally(() => {
+                if (!controller.signal.aborted) setLoading(false);
+            });
         return () => {
-            cancelled = true;
+            controller.abort();
         };
     }, []);
 
@@ -35,6 +47,23 @@ export default function GalleryPage() {
                     </p>
                 </div>
 
+                {loading ? (
+                    <div className="py-24 text-center text-white/60">
+                        <div className="mx-auto h-9 w-9 animate-spin rounded-full border-2 border-brand-gold border-t-transparent" />
+                        <p className="mt-4 font-mono text-xs uppercase tracking-widest">Loading verified photos</p>
+                    </div>
+                ) : error ? (
+                    <div className="mx-auto max-w-xl rounded-3xl border border-red-400/20 bg-red-400/5 p-8 text-center">
+                        <h2 className="font-serif text-2xl text-white">Gallery temporarily unavailable</h2>
+                        <p className="mt-3 text-sm text-white/60">{error}</p>
+                    </div>
+                ) : images.length === 0 ? (
+                    <div className="mx-auto max-w-xl rounded-3xl border border-white/10 bg-white/[0.03] p-8 text-center">
+                        <h2 className="font-serif text-2xl text-white">No verified travel photos yet</h2>
+                        <p className="mt-3 text-sm leading-relaxed text-white/60">This gallery will appear once real photos have been added and approved.</p>
+                        <Link to="/travel" className="mt-6 inline-block rounded-full bg-brand-gold px-6 py-3 text-xs font-bold uppercase tracking-widest text-black transition-colors hover:bg-white">Explore destinations</Link>
+                    </div>
+                ) : (
                 <div className="columns-1 md:columns-2 lg:columns-3 gap-8 space-y-8">
                     {images.map((item) => (
                         <motion.div
@@ -57,6 +86,7 @@ export default function GalleryPage() {
                         </motion.div>
                     ))}
                 </div>
+                )}
 
                 <AnimatePresence>
                     {selectedId && (

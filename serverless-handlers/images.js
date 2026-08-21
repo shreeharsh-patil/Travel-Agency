@@ -1,13 +1,14 @@
 import { connectToDatabase, COLLECTIONS } from '../lib/db.js';
+import { getTokenFromReq, verifyToken } from '../lib/auth.js';
 
 export default async function handler(req, res) {
   if (req.method === 'GET') {
     try {
       const { db } = await connectToDatabase();
-      // await works for both real Mongo cursors (sync) and the local JSON
-      // fallback wrapper (async find).
-      const cursor = await db.collection(COLLECTIONS.gallery).find({});
-      // Both the real Mongo cursor and the local JSON fallback support .sort().
+      const cursor = await db.collection(COLLECTIONS.gallery).find({
+        status: 'APPROVED',
+        sourceType: { $in: ['curated', 'traveler'] }
+      });
       const images =
         typeof cursor.sort === 'function'
           ? await cursor.sort({ sortOrder: 1, _id: 1 }).toArray()
@@ -22,8 +23,18 @@ export default async function handler(req, res) {
 
   if (req.method === 'POST') {
     const { src, alt, category, caption } = req.body || {};
-    if (!src || !alt) {
-      return res.status(400).json({ error: 'src and alt are required.' });
+    const token = getTokenFromReq(req);
+    let user;
+    try {
+      user = token ? verifyToken(token) : null;
+    } catch {
+      user = null;
+    }
+    if (!user || user.role !== 'admin') {
+      return res.status(403).json({ error: 'Administrator access is required.' });
+    }
+    if (!src || !alt || !/^https:\/\/\S+$/i.test(String(src))) {
+      return res.status(400).json({ error: 'An HTTPS image URL and descriptive alt text are required.' });
     }
 
     try {
@@ -34,6 +45,9 @@ export default async function handler(req, res) {
         alt,
         category: category || 'Scenery',
         caption: caption || '',
+        sourceType: 'curated',
+        status: 'APPROVED',
+        approvedAt: new Date(),
         sortOrder: 0,
         createdAt: new Date(),
       });

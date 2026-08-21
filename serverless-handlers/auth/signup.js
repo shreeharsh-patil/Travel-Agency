@@ -17,6 +17,9 @@ export default async function handler(req, res) {
   if (typeof password !== 'string' || password.length < 12 || !/[A-Za-z]/.test(password) || !/\d/.test(password)) {
     return res.status(400).json({ error: 'Use a password of at least 12 characters with letters and numbers.' });
   }
+  if (!process.env.MONGODB_URI || !process.env.JWT_SECRET) {
+    return res.status(503).json({ error: 'Account creation is temporarily unavailable. Please try again shortly.' });
+  }
 
   try {
     const { db } = await connectToDatabase();
@@ -55,7 +58,7 @@ export default async function handler(req, res) {
     });
   } catch (err) {
     console.error('[signup]', err);
-    if (/MONGODB_URI is required|MongoServer|MongoNetwork|MongoServerSelection/i.test(err.message || '')) {
+    if (/MONGODB_URI is required|Mongo|JWT|secret/i.test(err.message || '')) {
       return res.status(503).json({ error: 'Account creation is temporarily unavailable. Please try again shortly.' });
     }
     return res.status(500).json({ error: 'Could not create account. Please try again.' });
