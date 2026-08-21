@@ -7,6 +7,7 @@ export default function GalleryPage() {
     const [images, setImages] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
+    const [source, setSource] = useState('');
 
     // The public gallery intentionally contains only records supplied by the
     // content system. Bundled showcase artwork must never look like traveler
@@ -23,6 +24,7 @@ export default function GalleryPage() {
                 if (data.available === false) throw new Error(data.error || 'Gallery is temporarily unavailable.');
                 if (!controller.signal.aborted && Array.isArray(data.images)) {
                     setImages(data.images);
+                    setSource(data.source || '');
                 }
             })
             .catch((err) => {
@@ -46,6 +48,7 @@ export default function GalleryPage() {
                     <p className="font-sans text-sm md:text-base opacity-60 mt-4 tracking-widest uppercase">
                         Capturing the art of travel
                     </p>
+                    {source && <p className="mt-3 text-xs text-white/45">Photos: {source}</p>}
                 </div>
 
                 {loading ? (
@@ -121,6 +124,13 @@ export default function GalleryPage() {
                                             >
                                                 <h3 className="font-serif text-2xl md:text-4xl text-white mb-2">{item.caption}</h3>
                                                 <p className="font-sans text-white/50 text-sm uppercase tracking-widest">{item.category}</p>
+                                                {item.sourceUrl && (
+                                                    <p className="mt-2 text-xs text-white/50">
+                                                        <a href={item.sourceUrl} target="_blank" rel="noreferrer" className="text-brand-gold hover:text-white">{item.source}</a>
+                                                        {item.author ? ` · ${item.author}` : ''}
+                                                        {item.license ? ` · ${item.license}` : ''}
+                                                    </p>
+                                                )}
                                             </motion.div>
 
                                             <button

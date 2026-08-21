@@ -1,27 +1,32 @@
 import { connectToDatabase, COLLECTIONS } from '../lib/db.js';
 import { getTokenFromReq, verifyToken } from '../lib/auth.js';
+import { getWikimediaTravelGallery } from '../lib/travel/galleryProvider.js';
 
 export default async function handler(req, res) {
   if (req.method === 'GET') {
+    let images = [];
     try {
       const { db } = await connectToDatabase();
       const cursor = await db.collection(COLLECTIONS.gallery).find({
         status: 'APPROVED',
         sourceType: { $in: ['curated', 'traveler'] }
       });
-      const images =
+      images =
         typeof cursor.sort === 'function'
           ? await cursor.sort({ sortOrder: 1, _id: 1 }).toArray()
           : await cursor.toArray();
-
-      return res.status(200).json({ images });
     } catch (err) {
-      console.error('[images]', err);
-      return res.status(200).json({
-        available: false,
-        images: [],
-        error: 'Verified travel photos are temporarily unavailable.'
-      });
+      console.warn('[images] Gallery database unavailable:', err.message);
+    }
+
+    if (images.length > 0) return res.status(200).json({ available: true, source: 'Horizon Travels', images });
+
+    try {
+      const gallery = await getWikimediaTravelGallery();
+      return res.status(200).json({ available: true, source: 'Wikimedia Commons', ...gallery });
+    } catch (err) {
+      console.error('[images] Wikimedia Commons unavailable:', err.message);
+      return res.status(200).json({ available: false, images: [], error: 'Travel photos are temporarily unavailable.' });
     }
   }
 
