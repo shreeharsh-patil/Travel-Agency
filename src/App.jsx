@@ -26,6 +26,8 @@ const UserAccountPage = lazy(() => import('./components/UserAccountPage'));
 const GuidesListingPage = lazy(() => import('./components/GuidesListingPage'));
 const SeasonalOffersPage = lazy(() => import('./components/SeasonalOffersPage'));
 const TripsGalleryPage = lazy(() => import('./components/TripsGalleryPage'));
+const HotelSearchPage = lazy(() => import('./components/HotelSearchPage'));
+const FlightSearchPage = lazy(() => import('./components/FlightSearchPage'));
 
 function PageLoader() {
   return (
@@ -65,6 +67,8 @@ function App() {
               <Route path="/about" element={<GenericPage title="About Us" subtitle="Our Story" image="/images/swiss_alps.png" />} />
               <Route path="/dates" element={<GenericPage title="Availability" subtitle="Plan Your Stay" image="/images/tropical_beach.png" />} />
               <Route path="/travel" element={<TravelPage />} />
+              <Route path="/hotels" element={<HotelSearchPage />} />
+              <Route path="/flights" element={<FlightSearchPage />} />
 
               {/* Real Data Platform Routes */}
               <Route path="/places/:slug" element={<PlaceDetailPage />} />

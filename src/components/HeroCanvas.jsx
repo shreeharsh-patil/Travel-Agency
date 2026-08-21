@@ -1,7 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import gsap from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
-import { Link } from 'react-router-dom';
 import { useCanvasVideo } from '../hooks/useCanvasVideo';
 
 // GSAP is pulled into its own lazy chunk by vite.config.js (manualChunks),
@@ -14,16 +13,25 @@ export default function HeroCanvas({ scrollTrackRef }) {
     const textRef2 = useRef(null);
     const textRef3 = useRef(null);
     const [compactHero, setCompactHero] = useState(false);
+    const [mobileHero, setMobileHero] = useState(false);
 
     // Use the hook to get the image drawing function (frames lazy-load on scroll).
     const { drawFrame, isLoading, progress } = useCanvasVideo(canvasRef);
 
     useEffect(() => {
-        const media = window.matchMedia('(max-width: 767px), (prefers-reduced-motion: reduce)');
-        const update = () => setCompactHero(media.matches);
+        const mobileMedia = window.matchMedia('(max-width: 767px)');
+        const reducedMotionMedia = window.matchMedia('(prefers-reduced-motion: reduce)');
+        const update = () => {
+            setMobileHero(mobileMedia.matches);
+            setCompactHero(reducedMotionMedia.matches);
+        };
         update();
-        media.addEventListener('change', update);
-        return () => media.removeEventListener('change', update);
+        mobileMedia.addEventListener('change', update);
+        reducedMotionMedia.addEventListener('change', update);
+        return () => {
+            mobileMedia.removeEventListener('change', update);
+            reducedMotionMedia.removeEventListener('change', update);
+        };
     }, []);
 
     useEffect(() => {
@@ -125,7 +133,7 @@ export default function HeroCanvas({ scrollTrackRef }) {
                 </div>
 
                 {/* Text 2: Bottom Left */}
-                <div className={`absolute inset-0 items-end justify-start pb-32 pl-10 md:pl-20 ${compactHero ? 'hidden' : 'flex'}`}>
+                <div className={`absolute inset-0 items-end justify-start ${mobileHero ? 'pb-28 pl-6' : 'pb-32 pl-10 md:pl-20'} ${compactHero ? 'hidden' : 'flex'}`}>
                     <div>
                         <h1 ref={textRef2} className="font-serif text-[clamp(3rem,6vw,5rem)] text-white leading-none opacity-0 drop-shadow-2xl text-left">
                             We have<br />financing<br />plans.
@@ -140,12 +148,6 @@ export default function HeroCanvas({ scrollTrackRef }) {
                     </h1>
                 </div>
             </div>
-            {compactHero && (
-                <div className="absolute inset-x-5 bottom-9 z-20 flex flex-col gap-3">
-                    <p className="text-center text-xs tracking-[0.22em] uppercase text-white/75">Extraordinary stays, thoughtfully planned</p>
-                    <Link to="/travel" className="pointer-events-auto min-h-12 rounded-full bg-white px-5 py-3.5 text-center text-xs font-bold uppercase tracking-[0.18em] text-black shadow-xl active:scale-[0.98]">Explore destinations</Link>
-                </div>
-            )}
         </div>
     );
 }
