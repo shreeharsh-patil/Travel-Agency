@@ -471,7 +471,7 @@ export default function PlaceDetailPage() {
           </div>
 
           {/* Bottom Hero Info */}
-          <div className="absolute bottom-8 left-6 right-6 sm:left-12 sm:right-12 flex flex-col md:flex-row md:items-end justify-between gap-6 z-10">
+          <div className="absolute bottom-6 left-5 right-5 sm:bottom-8 sm:left-12 sm:right-12 flex flex-col md:flex-row md:items-end justify-between gap-4 sm:gap-6 z-10">
             <div>
               <span className="text-xs font-mono text-white/70 uppercase tracking-widest block mb-1">
                 📍 {place.city ? `${place.city}, ` : ''}{place.state_region ? `${place.state_region}, ` : ''}{place.country}
@@ -480,7 +480,7 @@ export default function PlaceDetailPage() {
               <p className="text-white/80 text-sm italic mt-1 max-w-xl">{place.tagline || place.description?.slice(0, 100)}...</p>
             </div>
 
-            <div className="bg-black/60 backdrop-blur-xl border border-white/10 p-5 rounded-3xl flex items-center gap-6 min-w-[260px]">
+            <div className="w-full md:w-auto bg-black/60 backdrop-blur-xl border border-white/10 p-4 sm:p-5 rounded-3xl flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-6 min-w-0 md:min-w-[260px]">
               <div>
                 <span className="text-[10px] font-mono text-white/40 uppercase block">Starting Package</span>
                 <span className="font-mono text-2xl text-brand-gold font-bold">
@@ -489,7 +489,7 @@ export default function PlaceDetailPage() {
               </div>
               <button
                 onClick={() => setShowReserveModal(true)}
-                className="px-6 py-3 rounded-full bg-brand-gold text-black font-bold text-xs uppercase tracking-widest hover:bg-white transition-colors"
+                className="min-h-11 w-full sm:w-auto px-6 py-3 rounded-full bg-brand-gold text-black font-bold text-xs uppercase tracking-widest hover:bg-white transition-colors"
               >
                 Book Package ✨
               </button>
