@@ -57,10 +57,11 @@ export function useCanvasVideo(canvasRef, frameCount = 278) {
                     Math.round((Math.min(s.loadedCount, PRIORITY_COUNT) / PRIORITY_COUNT) * 100)
                 );
 
-                // If the loading overlay was dismissed early (timeout) before
-                // any frame arrived, paint the canvas as soon as the first
-                // frame finishes loading so the hero is never left black.
-                if (s.loadedCount === 1 && drawRef.current) {
+                // Repaint whenever a frame finishes. This is essential on
+                // touch devices: scrolling can request an unloaded frame and
+                // otherwise leave the canvas showing the previous image until
+                // the user scrolls again after the network request completes.
+                if (drawRef.current) {
                     drawRef.current(lastTargetRef.current);
                 }
                 pumpRef.current && pumpRef.current();
