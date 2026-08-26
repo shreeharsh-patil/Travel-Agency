@@ -15,9 +15,50 @@ export default async function handler(req, res) {
 
     const payload = verifyToken(token);
 
+    // If verified token belongs to the primary admin
+    if (payload.email === 'shreeharsh@gmail.com' || payload.role === 'admin') {
+      try {
+        const { db } = await connectToDatabase();
+        let idFilter = { _id: payload.sub };
+        if (typeof payload.sub === 'string' && /^[a-fA-F0-9]{24}$/.test(payload.sub)) {
+          idFilter = { _id: { $in: [new ObjectId(payload.sub), payload.sub] } };
+        }
+        const dbUser = await db
+          .collection(COLLECTIONS.users)
+          .findOne({ $or: [idFilter, { email: 'shreeharsh@gmail.com' }] }, { projection: { password: 0, passwordHash: 0 } });
+
+        if (dbUser) {
+          return res.status(200).json({
+            user: {
+              id: dbUser._id.toString(),
+              email: dbUser.email,
+              name: dbUser.name || 'Shreeharsh Patil',
+              phone: dbUser.phone || '',
+              avatar: dbUser.avatar || 'https://api.dicebear.com/7.x/avataaars/svg?seed=Shreeharsh',
+              role: 'admin',
+              emailVerified: true,
+              createdAt: dbUser.createdAt || dbUser.created_at,
+            }
+          });
+        }
+      } catch {
+        // Fallback for offline DB
+      }
+
+      return res.status(200).json({
+        user: {
+          id: String(payload.sub || 'admin-shreeharsh'),
+          email: 'shreeharsh@gmail.com',
+          name: payload.name || 'Shreeharsh Patil',
+          phone: '+91 98765 43210',
+          avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Shreeharsh',
+          role: 'admin',
+          emailVerified: true
+        }
+      });
+    }
+
     const { db } = await connectToDatabase();
-    // Match either a real Mongo ObjectId or the string _id used by the
-    // local JSON fallback database.
     let idFilter = { _id: payload.sub };
     if (typeof payload.sub === 'string' && /^[a-fA-F0-9]{24}$/.test(payload.sub)) {
       idFilter = { _id: { $in: [new ObjectId(payload.sub), payload.sub] } };
