@@ -547,21 +547,8 @@ export default function PlaceDetailPage() {
               )}
             </div>
 
-            {/* Gallery */}
-            {place.gallery && place.gallery.length > 0 && (
-              <div>
-                <h3 className="font-serif text-2xl text-white mb-4">Gallery</h3>
-                <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
-                  {place.gallery.map((img, i) => (
-                    <div key={i} className="h-40 rounded-2xl overflow-hidden border border-white/10 group">
-                      <SafeImage src={img} alt={`${place.name} gallery ${i}`} loading="lazy" decoding="async" className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-
             {/* Amenities & Features */}
+
             {place.amenities && place.amenities.length > 0 && (
               <div className="bg-[#121214] border border-white/10 rounded-3xl p-6 sm:p-8 space-y-4">
                 <div className="flex items-center justify-between border-b border-white/10 pb-4">
