@@ -3,8 +3,10 @@ import { motion } from 'framer-motion';
 import { Link } from 'react-router-dom';
 import { destinations } from '../data/destinations';
 import SafeImage from './SafeImage';
+import { useToast } from '../contexts/ToastContext';
 
 export default function FavoritesPage() {
+  const toast = useToast();
   const [favorites, setFavorites] = useState([]);
   const [loading, setLoading] = useState(true);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
@@ -49,8 +51,11 @@ export default function FavoritesPage() {
         method: 'DELETE'
       });
       setFavorites(prev => prev.filter(item => item.id !== placeId));
+      window.dispatchEvent(new Event('favorites-updated'));
+      toast.info('Removed sanctuary from your wishlist');
     } catch (err) {
       console.error('Remove favorite error:', err);
+      toast.error('Could not remove sanctuary.');
     }
   };
 

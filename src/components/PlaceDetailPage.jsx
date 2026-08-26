@@ -8,9 +8,11 @@ import CurrencyPrice from './CurrencyPrice';
 import VisaChecker from './VisaChecker';
 import { PlaceDetailSkeleton } from './Skeletons';
 import SafeImage from './SafeImage';
+import { useToast } from '../contexts/ToastContext';
 
 export default function PlaceDetailPage() {
   const { slug } = useParams();
+  const toast = useToast();
   const [place, setPlace] = useState(null);
   const [reviews, setReviews] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -338,7 +340,9 @@ export default function PlaceDetailPage() {
       const session = await fetch('/api/auth/me');
       const sessionData = session.ok ? await session.json() : null;
       if (!sessionData?.user) {
-        alert('Please log in to save places to your favorites.');
+        toast.warning('Please sign in to save places to your favorites.', {
+          action: { label: 'Sign In', onClick: () => { window.location.href = '/login'; } }
+        });
         return;
       }
       const res = await fetch('/api/favorites', {
@@ -356,12 +360,28 @@ export default function PlaceDetailPage() {
 
       const data = await res.json();
       if (res.status === 401) {
-        alert('Please log in to save places to your favorites.');
+        toast.warning('Please sign in to save places to your favorites.', {
+          action: { label: 'Sign In', onClick: () => { window.location.href = '/login'; } }
+        });
       } else if (res.ok) {
         setIsSaved(data.saved);
+        if (data.saved) {
+          toast.success(`Saved ${place?.name || 'sanctuary'} to your wishlist! ❤️`);
+        } else {
+          toast.info(`Removed ${place?.name || 'sanctuary'} from wishlist`);
+        }
+        window.dispatchEvent(new Event('favorites-updated'));
       }
     } catch (err) {
       console.error('Toggle favorite error:', err);
+      toast.error('Could not update favorites. Please try again.');
+    }
+  };
+
+  const handleShare = () => {
+    if (navigator.clipboard) {
+      navigator.clipboard.writeText(window.location.href);
+      toast.success('Sanctuary link copied to clipboard! 📋');
     }
   };
 
@@ -581,17 +601,28 @@ export default function PlaceDetailPage() {
               )}
             </div>
 
-            {/* Save / Favorite Button */}
-            <button
-              onClick={toggleFavorite}
-              className={`px-5 py-2.5 rounded-full backdrop-blur-md border text-xs font-bold uppercase tracking-wider transition-all flex items-center gap-2 ${
-                isSaved
-                  ? 'bg-brand-gold text-black border-brand-gold shadow-lg shadow-brand-gold/20'
-                  : 'bg-black/60 text-white border-white/20 hover:bg-white hover:text-black'
-              }`}
-            >
-              <span>{isSaved ? '♥ Saved' : '♡ Save'}</span>
-            </button>
+            {/* Action Buttons: Share & Favorite */}
+            <div className="flex items-center gap-2">
+              <button
+                onClick={handleShare}
+                className="px-4 py-2.5 rounded-full backdrop-blur-md bg-black/60 hover:bg-white/20 text-white border border-white/20 text-xs font-bold uppercase tracking-wider transition-all flex items-center gap-1.5"
+                title="Share Sanctuary link"
+              >
+                <span>🔗</span>
+                <span className="hidden sm:inline">Share</span>
+              </button>
+
+              <button
+                onClick={toggleFavorite}
+                className={`px-5 py-2.5 rounded-full backdrop-blur-md border text-xs font-bold uppercase tracking-wider transition-all flex items-center gap-2 ${
+                  isSaved
+                    ? 'bg-brand-gold text-black border-brand-gold shadow-lg shadow-brand-gold/20'
+                    : 'bg-black/60 text-white border-white/20 hover:bg-white hover:text-black'
+                }`}
+              >
+                <span>{isSaved ? '♥ Saved' : '♡ Save'}</span>
+              </button>
+            </div>
           </div>
 
           {/* Bottom Hero Info */}

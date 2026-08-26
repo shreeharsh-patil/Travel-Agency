@@ -7,6 +7,7 @@ import ReservationForm from './ReservationForm';
 import CurrencyPrice from './CurrencyPrice';
 import { DestinationGridSkeleton } from './Skeletons';
 import SafeImage from './SafeImage';
+import { useToast } from '../contexts/ToastContext';
 
 const AMENITY_FILTERS = [
   { id: 'wifi', name: 'WiFi', icon: '📶' },
@@ -20,6 +21,7 @@ const AMENITY_FILTERS = [
 ];
 
 export default function TravelPage() {
+  const toast = useToast();
   const [searchParams] = useSearchParams();
   const [selectedDestination, setSelectedDestination] = useState(null);
   const [allPlaces, setAllPlaces] = useState(destinations);
@@ -68,7 +70,7 @@ export default function TravelPage() {
           setFavorites(data.favorites.map(f => f.place_id || f.id || f));
         }
       }
-    } catch (err) {
+    } catch {
       // User may not be logged in
     }
   };
@@ -85,6 +87,7 @@ export default function TravelPage() {
     try {
       if (isFav) {
         await fetch(`/api/favorites?id=${encodeURIComponent(destId)}`, { method: 'DELETE' });
+        toast.info(`Removed ${dest.name || 'sanctuary'} from wishlist`);
       } else {
         await fetch('/api/favorites', {
           method: 'POST',
@@ -97,7 +100,9 @@ export default function TravelPage() {
             price: dest.price || dest.priceFrom
           })
         });
+        toast.success(`Saved ${dest.name || 'sanctuary'} to your wishlist! ❤️`);
       }
+      window.dispatchEvent(new Event('favorites-updated'));
     } catch (err) {
       console.error('Toggle favorite error:', err);
     }

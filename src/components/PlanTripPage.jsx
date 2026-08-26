@@ -3,9 +3,11 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate, Link } from 'react-router-dom';
 import { PlannerService } from '../services/trips/plannerService';
 import CurrencyPrice from './CurrencyPrice';
+import { useToast } from '../contexts/ToastContext';
 
 export default function PlanTripPage() {
   const navigate = useNavigate();
+  const toast = useToast();
   const [step, setStep] = useState(1);
 
   const [wizardData, setWizardData] = useState({
@@ -38,8 +40,10 @@ export default function PlanTripPage() {
       const result = await PlannerService.generateItinerary(wizardData);
       setGeneratedItinerary(result);
       setStep(11); // View generated itinerary
+      toast.success('Your bespoke itinerary has been created! ✨');
     } catch (err) {
       console.error('Generate itinerary error:', err);
+      toast.error('Could not generate itinerary. Please try again.');
     } finally {
       setGenerating(false);
     }
@@ -49,9 +53,11 @@ export default function PlanTripPage() {
     if (!generatedItinerary) return;
     const saved = await PlannerService.saveItineraryToAccount(generatedItinerary);
     if (saved) {
-      alert(saved.synced
-        ? 'Trip plan saved & synced to your account! You can now share it from My Trips.'
-        : 'Trip plan saved to your account! Sign in to sync it across devices & share it.');
+      if (saved.synced) {
+        toast.success('Trip plan saved & synced to your account!');
+      } else {
+        toast.info('Trip plan saved to your device. Sign in anytime to sync across devices.');
+      }
       navigate('/my-trips');
     }
   };
