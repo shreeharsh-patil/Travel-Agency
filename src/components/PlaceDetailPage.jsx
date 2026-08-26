@@ -90,6 +90,7 @@ export default function PlaceDetailPage() {
   const [weatherData, setWeatherData] = useState(null);
   const [airQualityData, setAirQualityData] = useState(null);
   const [wikiData, setWikiData] = useState(null);
+  const [countryData, setCountryData] = useState(null);
   const [explorerPhotos, setExplorerPhotos] = useState([]);
   const [freeAttractions, setFreeAttractions] = useState([]);
   const [sunTimesData, setSunTimesData] = useState(null);
@@ -149,6 +150,14 @@ export default function PlaceDetailPage() {
         .then(r => r.json())
         .then(w => {
           if (w && w.extract) setWikiData(w);
+        })
+        .catch(() => {});
+
+      // Free API: Fetch Country Intelligence & Traveler Essentials
+      fetch(`/api/country-info?country=${encodeURIComponent(data.place.country || 'India')}`)
+        .then(r => r.json())
+        .then(c => {
+          if (c && c.countryName) setCountryData(c);
         })
         .catch(() => {});
 
@@ -746,6 +755,75 @@ export default function PlaceDetailPage() {
                     <span className="text-brand-gold font-bold">{sunTimesData.sunset}</span>
                   </div>
                 </div>
+              </div>
+            )}
+
+            {/* Country Intelligence & Traveler Essentials (Free REST Countries Engine) */}
+            {countryData && (
+              <div className="bg-[#121214] border border-white/10 rounded-3xl p-6 sm:p-8 space-y-6 shadow-xl">
+                <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-2 border-b border-white/10 pb-4">
+                  <div className="flex items-center gap-3">
+                    <span className="text-3xl">{countryData.flagEmoji}</span>
+                    <div>
+                      <span className="text-[10px] font-mono text-brand-gold uppercase tracking-widest block">
+                        Traveler Essentials
+                      </span>
+                      <h3 className="font-serif text-2xl text-white mt-0.5">{countryData.countryName} Travel Guide</h3>
+                    </div>
+                  </div>
+                  <span className="text-xs font-mono text-white/50 bg-white/5 px-3 py-1.5 rounded-full border border-white/10 self-start sm:self-auto">
+                    {countryData.region}
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 text-xs">
+                  <div className="p-3.5 rounded-2xl bg-white/5 border border-white/10 space-y-1">
+                    <span className="text-white/40 block text-[10px] uppercase font-mono">Capital & Time</span>
+                    <span className="text-white font-medium block">{countryData.capital}</span>
+                    <span className="text-brand-gold text-[11px] font-mono block">{countryData.timeZone}</span>
+                  </div>
+                  <div className="p-3.5 rounded-2xl bg-white/5 border border-white/10 space-y-1">
+                    <span className="text-white/40 block text-[10px] uppercase font-mono">Currency & Calling</span>
+                    <span className="text-white font-medium block">{countryData.currency}</span>
+                    <span className="text-brand-gold text-[11px] font-mono block">Code: {countryData.callingCode}</span>
+                  </div>
+                  <div className="p-3.5 rounded-2xl bg-white/5 border border-white/10 space-y-1">
+                    <span className="text-white/40 block text-[10px] uppercase font-mono">Power & Voltage</span>
+                    <span className="text-white font-medium block">{countryData.powerPlugs}</span>
+                  </div>
+                  <div className="p-3.5 rounded-2xl bg-white/5 border border-white/10 space-y-1">
+                    <span className="text-white/40 block text-[10px] uppercase font-mono">Driving Side</span>
+                    <span className="text-white font-medium block">{countryData.drivingSide} Side</span>
+                  </div>
+                  <div className="p-3.5 rounded-2xl bg-white/5 border border-white/10 space-y-1">
+                    <span className="text-white/40 block text-[10px] uppercase font-mono">Emergency SOS</span>
+                    <span className="text-red-400 font-bold block">{countryData.emergencyNumber}</span>
+                  </div>
+                  <div className="p-3.5 rounded-2xl bg-white/5 border border-white/10 space-y-1">
+                    <span className="text-white/40 block text-[10px] uppercase font-mono">Best Season</span>
+                    <span className="text-green-400 font-medium block">{countryData.bestMonths}</span>
+                  </div>
+                </div>
+
+                {/* Spoken Local Language Phrases */}
+                {countryData.phrases && countryData.phrases.length > 0 && (
+                  <div className="space-y-3 pt-2">
+                    <span className="text-[10px] font-mono text-brand-gold uppercase tracking-widest block">
+                      🗣️ Essential Local Phrases ({countryData.languages.split(',')[0]})
+                    </span>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                      {countryData.phrases.map((phrase, idx) => (
+                        <div key={idx} className="p-3 rounded-xl bg-white/[0.03] border border-white/5 flex items-center justify-between gap-3">
+                          <div>
+                            <span className="text-white text-xs font-semibold block">{phrase.text}</span>
+                            <span className="text-brand-gold/80 text-[10px] font-mono block italic">"{phrase.pronunciation}"</span>
+                          </div>
+                          <span className="text-white/50 text-[11px] font-medium text-right">{phrase.meaning}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
             )}
 
