@@ -9,6 +9,38 @@ export default async function handler(req, res) {
     const reservations = await db.collection(COLLECTIONS.reservations).find({ userId: auth.id }).sort({ createdAt: -1 }).toArray();
     return res.json({ bookings: reservations.map(({ _id, ...booking }) => ({ id: String(_id), ...booking })) });
   }
+
+  if (req.method === 'DELETE') {
+    const auth = await authenticateRequest(req, res);
+    if (!auth) return;
+    const { id } = req.query || req.body || {};
+    if (!id) return res.status(400).json({ error: 'Reservation ID is required.' });
+
+    try {
+      const { db } = await connectToDatabase();
+      const { ObjectId } = await import('mongodb');
+      let query = { userId: auth.id };
+      try {
+        query._id = new ObjectId(id);
+      } catch {
+        query.id = id;
+      }
+      const result = await db.collection(COLLECTIONS.reservations).updateOne(
+        query,
+        { $set: { status: 'cancelled', cancelledAt: new Date() } }
+      );
+
+      if (result.matchedCount === 0) {
+        return res.status(404).json({ error: 'Reservation not found or unauthorized.' });
+      }
+
+      return res.json({ ok: true, message: 'Reservation successfully cancelled.' });
+    } catch (err) {
+      console.error('[DELETE /api/reservations]', err);
+      return res.status(500).json({ error: 'Could not cancel reservation.' });
+    }
+  }
+
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
@@ -21,6 +53,8 @@ export default async function handler(req, res) {
     phone,
     guests,
     startDate,
+    endDate,
+    nights,
     tier,
     notes,
     addons,
@@ -46,6 +80,8 @@ export default async function handler(req, res) {
       phone: phone || null,
       guests: guests || null,
       startDate: startDate || null,
+      endDate: endDate || null,
+      nights: Number(nights) || 1,
       tier: tier || null,
       notes: notes || null,
       addons: Array.isArray(addons) ? addons : [],
@@ -54,7 +90,7 @@ export default async function handler(req, res) {
       totalEstimate: Number(totalEstimate) || null,
       bookingReference: bookingReference || null,
       userId: auth.id,
-      status: 'pending',
+      status: 'confirmed',
       createdAt: new Date(),
     };
 
@@ -64,10 +100,11 @@ export default async function handler(req, res) {
       ok: true,
       id: result.insertedId.toString(),
       bookingReference: doc.bookingReference,
-      message: 'Reservation received. Our concierge will reach out shortly.',
+      message: 'Reservation confirmed! Details are saved in your account.',
     });
   } catch (err) {
     console.error('[reservations]', err);
     return res.status(500).json({ error: 'Could not save reservation. Please try again.' });
   }
 }
+

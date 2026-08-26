@@ -1,7 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 export default function ReservationForm({ destination, onClose }) {
+    const todayStr = new Date().toISOString().split('T')[0];
     const [step, setStep] = useState(1);
     const [formData, setFormData] = useState({
         firstName: '',
@@ -10,6 +11,7 @@ export default function ReservationForm({ destination, onClose }) {
         phone: '',
         guests: '2 Guests',
         startDate: '',
+        endDate: '',
         tier: 'VIP Luxury Villa',
         notes: '',
         addons: []
@@ -37,7 +39,15 @@ export default function ReservationForm({ destination, onClose }) {
         return acc + (item ? item.price : 0);
     }, 0);
 
-    const totalEstimate = Math.round(basePrice * (formData.tier === 'Ultra VIP Estate' ? 1.4 : 1) + calculatedAddonsTotal);
+    const calculatedNights = useMemo(() => {
+        if (!formData.startDate || !formData.endDate) return 1;
+        const start = new Date(formData.startDate);
+        const end = new Date(formData.endDate);
+        const diff = Math.ceil((end - start) / (1000 * 60 * 60 * 24));
+        return diff > 0 ? diff : 1;
+    }, [formData.startDate, formData.endDate]);
+
+    const totalEstimate = Math.round(basePrice * calculatedNights * (formData.tier === 'Ultra VIP Estate' ? 1.4 : 1) + calculatedAddonsTotal);
 
     const toggleAddon = (id) => {
         setFormData(prev => ({
@@ -75,6 +85,8 @@ export default function ReservationForm({ destination, onClose }) {
                     phone: formData.phone,
                     guests: formData.guests,
                     startDate: formData.startDate,
+                    endDate: formData.endDate,
+                    nights: calculatedNights,
                     tier: formData.tier,
                     notes: formData.notes,
                     addons: formData.addons,
@@ -95,6 +107,7 @@ export default function ReservationForm({ destination, onClose }) {
             setSubmitError(err.message);
         }
     };
+
 
     return (
         <motion.div
@@ -182,7 +195,7 @@ export default function ReservationForm({ destination, onClose }) {
                             >
                                 <h4 className="font-serif text-xl text-white">1. Choose Accommodations & Schedule</h4>
                                 
-                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                                     <div className="space-y-2">
                                         <label className="text-xs uppercase tracking-widest text-white/60">Travel Party</label>
                                         <select
@@ -197,16 +210,42 @@ export default function ReservationForm({ destination, onClose }) {
                                         </select>
                                     </div>
                                     <div className="space-y-2">
-                                        <label className="text-xs uppercase tracking-widest text-white/60">Preferred Departure Date</label>
+                                        <label className="text-xs uppercase tracking-widest text-white/60">Check-in Date *</label>
                                         <input
                                             type="date"
+                                            min={todayStr}
                                             value={formData.startDate}
-                                            onChange={(e) => setFormData({ ...formData, startDate: e.target.value })}
+                                            onChange={(e) => {
+                                                const newStart = e.target.value;
+                                                setFormData(prev => ({
+                                                    ...prev,
+                                                    startDate: newStart,
+                                                    endDate: prev.endDate && prev.endDate <= newStart ? '' : prev.endDate
+                                                }));
+                                            }}
+                                            className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white/90 focus:outline-none focus:border-brand-gold transition-colors"
+                                            required
+                                        />
+                                    </div>
+                                    <div className="space-y-2">
+                                        <label className="text-xs uppercase tracking-widest text-white/60">Checkout Date *</label>
+                                        <input
+                                            type="date"
+                                            min={formData.startDate || todayStr}
+                                            value={formData.endDate}
+                                            onChange={(e) => setFormData({ ...formData, endDate: e.target.value })}
                                             className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white/90 focus:outline-none focus:border-brand-gold transition-colors"
                                             required
                                         />
                                     </div>
                                 </div>
+
+                                {formData.startDate && formData.endDate && (
+                                    <div className="flex items-center justify-between p-3 rounded-xl bg-white/5 border border-white/10 text-xs font-mono">
+                                        <span className="text-white/60">Stay Duration:</span>
+                                        <span className="text-brand-gold font-bold">{calculatedNights} {calculatedNights === 1 ? 'Night' : 'Nights'}</span>
+                                    </div>
+                                )}
 
                                 <div className="space-y-2">
                                     <label className="text-xs uppercase tracking-widest text-white/60">Accommodation Category</label>

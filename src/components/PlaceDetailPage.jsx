@@ -524,6 +524,43 @@ export default function PlaceDetailPage() {
               </div>
             )}
 
+            {/* Amenities & Features */}
+            {place.amenities && place.amenities.length > 0 && (
+              <div className="bg-[#121214] border border-white/10 rounded-3xl p-6 sm:p-8 space-y-4">
+                <div className="flex items-center justify-between border-b border-white/10 pb-4">
+                  <div>
+                    <span className="text-[10px] font-mono text-brand-gold uppercase tracking-widest block">
+                      ✨ Features & Perks
+                    </span>
+                    <h3 className="font-serif text-2xl text-white mt-0.5">What this sanctuary offers</h3>
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3 pt-2">
+                  {place.amenities.map((amenityKey) => {
+                    const labels = {
+                      wifi: { name: 'Fast WiFi', icon: '📶' },
+                      pool: { name: 'Swimming Pool', icon: '🏊‍♂️' },
+                      ac: { name: 'Air Conditioning', icon: '❄️' },
+                      parking: { name: 'Free Parking', icon: '🚗' },
+                      kitchen: { name: 'Gourmet Kitchen', icon: '🍳' },
+                      pets: { name: 'Pet Friendly', icon: '🐾' },
+                      view: { name: 'Scenic / Ocean View', icon: '🌅' },
+                      spa: { name: 'Spa & Wellness', icon: '🧘' },
+                      workspace: { name: 'Dedicated Workspace', icon: '💻' },
+                      security: { name: '24/7 Security', icon: '🛡️' }
+                    };
+                    const item = labels[amenityKey] || { name: amenityKey, icon: '✨' };
+                    return (
+                      <div key={amenityKey} className="flex items-center gap-2.5 p-3 rounded-2xl bg-white/5 border border-white/10 text-xs text-white/90">
+                        <span className="text-base">{item.icon}</span>
+                        <span className="font-medium">{item.name}</span>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
             {/* Interactive Map */}
             <div className="bg-[#121214] border border-white/10 rounded-3xl p-6 sm:p-8 space-y-5">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-white/10 pb-4">
