@@ -598,13 +598,13 @@ export default function PlaceDetailPage() {
               </div>
             )}
 
-            {/* Live Explorer Photos (Free Wikimedia Commons API) */}
+            {/* Live Explorer Photos */}
             {explorerPhotos && explorerPhotos.length > 0 && (
               <div className="bg-[#121214] border border-white/10 rounded-3xl p-6 sm:p-8 space-y-5">
                 <div className="flex justify-between items-center border-b border-white/10 pb-4">
                   <div>
                     <span className="text-[10px] font-mono text-brand-gold uppercase tracking-widest block">
-                      📷 Authentic Travel Photography (Free Open API)
+                      📷 Authentic Travel Photography
                     </span>
                     <h3 className="font-serif text-2xl text-white mt-0.5">Real Explorer Photos: {place.name || place.title}</h3>
                   </div>
@@ -655,13 +655,13 @@ export default function PlaceDetailPage() {
               <PlaceMap place={place} />
             </div>
 
-            {/* Wikipedia Historical & Cultural Capsule (Free Wikipedia REST API) */}
+            {/* Wikipedia Historical & Cultural Capsule */}
             {wikiData && (
               <div className="bg-[#121214] border border-white/10 rounded-3xl p-6 sm:p-8 space-y-4">
                 <div className="flex justify-between items-start border-b border-white/10 pb-4">
                   <div>
                     <span className="text-[10px] font-mono text-brand-gold uppercase tracking-widest block">
-                      📖 Heritage & History (Wikipedia Open API)
+                      📖 Heritage & Cultural Insights
                     </span>
                     <h3 className="font-serif text-2xl text-white mt-0.5">Cultural Insights: {wikiData.title}</h3>
                   </div>
@@ -679,6 +679,7 @@ export default function PlaceDetailPage() {
                 <p className="text-white/80 text-sm leading-relaxed">{wikiData.extract}</p>
               </div>
             )}
+
 
             {/* Live Weather Forecast & Air Quality (Free Open-Meteo APIs) */}
             {(weatherData || airQualityData || uvIndex) && (
@@ -829,18 +830,18 @@ export default function PlaceDetailPage() {
 
 
 
-            {/* Free Places to Visit (₹0 Entry) */}
+            {/* Local Landmarks & Scenic Viewpoints */}
             {freeAttractions.length > 0 && (
               <div className="bg-[#121214] border border-white/10 rounded-3xl p-6 sm:p-8 space-y-6">
                 <div className="flex justify-between items-center border-b border-white/10 pb-4">
                   <div>
-                    <span className="text-xs font-mono text-green-400 uppercase tracking-widest block">
-                      Free Exploration (₹0 Entry Fee)
+                    <span className="text-xs font-mono text-brand-gold uppercase tracking-widest block">
+                      Local Landmarks & Nature Walks
                     </span>
-                    <h3 className="font-serif text-2xl text-white mt-1">Zero-Cost Local Sanctuaries</h3>
+                    <h3 className="font-serif text-2xl text-white mt-1">Highlights & Scenic Viewpoints</h3>
                   </div>
-                  <span className="px-3 py-1 rounded-full bg-green-500/20 text-green-300 text-xs font-mono font-bold">
-                    Free (₹0)
+                  <span className="px-3 py-1 rounded-full bg-white/10 text-white text-xs font-mono font-medium">
+                    Complimentary Access
                   </span>
                 </div>
 

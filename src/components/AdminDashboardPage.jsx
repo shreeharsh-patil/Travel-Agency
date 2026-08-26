@@ -829,18 +829,18 @@ export default function AdminDashboardPage() {
                 <div className="space-y-3">
                   <div className="flex items-center justify-between">
                     <label className="text-xs uppercase font-mono text-white/60">
-                      Original Photos (Cloudinary CDN & Free Open APIs)
+                      Destination Photo Gallery
                     </label>
                     <div className="flex items-center gap-2">
                       <button
                         type="button"
                         onClick={handleAutoFetchPlacePhotos}
                         disabled={placeUploading}
-                        className="px-3 py-1 rounded-full bg-brand-gold/20 hover:bg-brand-gold text-brand-gold hover:text-black text-[11px] font-mono font-semibold transition-all flex items-center gap-1.5 border border-brand-gold/30 disabled:opacity-50"
-                        title="Automatically fetch real authentic photos from Wikimedia Commons free API"
+                        className="px-3 py-1 rounded-full bg-white/10 hover:bg-white text-white hover:text-black text-[11px] font-mono font-semibold transition-all flex items-center gap-1.5 border border-white/20 disabled:opacity-50"
+                        title="Auto-fetch high-resolution photos for this destination"
                       >
                         <span>⚡</span>
-                        <span>Auto-Fetch Free Photos</span>
+                        <span>Auto-Fetch Photos</span>
                       </button>
                       <span className="text-xs text-white/40">{editingPlace.gallery?.length || 0}/8 photos</span>
                     </div>
