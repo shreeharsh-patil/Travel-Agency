@@ -75,6 +75,12 @@ export async function fetchOriginalPlaceGallery(query, limit = 8) {
   ];
 }
 
+export async function fetchOriginalPlaceImage(placeName) {
+  const gallery = await fetchOriginalPlaceGallery(placeName, 1);
+  return gallery?.[0]?.src || 'https://images.unsplash.com/photo-1512343800234-840322ee8146?w=1200&auto=format&fit=crop&q=80';
+}
+
+
 export default async function handler(req, res) {
   if (req.method !== 'GET') {
     return res.status(405).json({ error: 'Method not allowed' });
