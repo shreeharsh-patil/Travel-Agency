@@ -94,6 +94,8 @@ export default function PlaceDetailPage() {
   const [travelAdvisory, setTravelAdvisory] = useState(null);
   const [nearbyLandmarks, setNearbyLandmarks] = useState([]);
   const [packingGuide, setPackingGuide] = useState(null);
+  const [transitData, setTransitData] = useState(null);
+  const [festivalsData, setFestivalsData] = useState([]);
   const [explorerPhotos, setExplorerPhotos] = useState([]);
   const [freeAttractions, setFreeAttractions] = useState([]);
   const [sunTimesData, setSunTimesData] = useState(null);
@@ -180,6 +182,24 @@ export default function PlaceDetailPage() {
         })
         .catch(() => {});
 
+      // Fetch Public Transit & Airport Intelligence
+      fetch(`/api/transit-hub?destination=${encodeURIComponent(slug)}`)
+        .then(r => r.json())
+        .then(th => {
+          if (th && th.transit) setTransitData(th.transit);
+        })
+        .catch(() => {});
+
+      // Fetch Cultural Festivals & Seasonal Calendar
+      fetch(`/api/festivals?destination=${encodeURIComponent(slug)}`)
+        .then(r => r.json())
+        .then(fs => {
+          if (fs && Array.isArray(fs.festivals) && fs.festivals.length > 0) {
+            setFestivalsData(fs.festivals);
+          }
+        })
+        .catch(() => {});
+
       // Fetch Real Explorer Photography
       fetch(`/api/external-images?query=${encodeURIComponent(data.place.name || slug)}&limit=6`)
         .then(r => r.json())
@@ -189,6 +209,7 @@ export default function PlaceDetailPage() {
           }
         })
         .catch(() => {});
+
 
       // Only request location services when this place actually has coordinates
       if (Number.isFinite(placeLat) && Number.isFinite(placeLon)) {
@@ -935,6 +956,98 @@ export default function PlaceDetailPage() {
                 </div>
               </div>
             )}
+
+            {/* Airport & Multimodal Public Transit Intelligence */}
+            {transitData && (
+              <div className="bg-[#121214] border border-white/10 rounded-3xl p-6 sm:p-8 space-y-5 shadow-xl">
+                <div className="flex justify-between items-center border-b border-white/10 pb-4">
+                  <div>
+                    <span className="text-[10px] font-mono text-brand-gold uppercase tracking-widest block">
+                      🚆 Airport & Multimodal Transit Hub
+                    </span>
+                    <h3 className="font-serif text-2xl text-white mt-0.5">Arrival & Transit Access</h3>
+                  </div>
+                  {transitData.metroAvailable && (
+                    <span className="text-xs font-mono text-green-400 bg-green-500/10 px-3 py-1 rounded-full border border-green-500/20">
+                      Metro Subway Connected
+                    </span>
+                  )}
+                </div>
+
+                <div className="space-y-4 text-xs">
+                  {transitData.airports && transitData.airports.length > 0 && (
+                    <div className="space-y-2">
+                      <span className="text-[10px] font-mono text-white/40 uppercase tracking-widest block">Airport Gateways</span>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        {transitData.airports.map((ap, i) => (
+                          <div key={i} className="p-3.5 rounded-2xl bg-white/5 border border-white/10 space-y-1">
+                            <div className="flex justify-between items-start">
+                              <span className="text-white font-semibold">{ap.name}</span>
+                              <span className="text-brand-gold font-mono text-[10px]">{ap.distance}</span>
+                            </div>
+                            <p className="text-white/60 text-[11px]">{ap.type} • {ap.transferTime}</p>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {transitData.railway && transitData.railway.length > 0 && (
+                    <div className="space-y-2 pt-2">
+                      <span className="text-[10px] font-mono text-white/40 uppercase tracking-widest block">Railway & Express Stations</span>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        {transitData.railway.map((rw, i) => (
+                          <div key={i} className="p-3.5 rounded-2xl bg-white/5 border border-white/10 space-y-1">
+                            <div className="flex justify-between items-start">
+                              <span className="text-white font-semibold">{rw.name}</span>
+                              <span className="text-brand-gold font-mono text-[10px]">{rw.distance}</span>
+                            </div>
+                            <p className="text-white/60 text-[11px]">{rw.type}</p>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {transitData.localTransit && (
+                    <p className="text-[11px] font-mono text-white/70 bg-white/[0.02] p-3 rounded-xl border border-white/5 mt-2">
+                      🚗 <strong>Local Mobility:</strong> {transitData.localTransit}
+                    </p>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* Cultural Festivals & Seasonal Calendar */}
+            {festivalsData && festivalsData.length > 0 && (
+              <div className="bg-[#121214] border border-white/10 rounded-3xl p-6 sm:p-8 space-y-5 shadow-xl">
+                <div className="flex justify-between items-center border-b border-white/10 pb-4">
+                  <div>
+                    <span className="text-[10px] font-mono text-brand-gold uppercase tracking-widest block">
+                      🎭 Cultural Festivals & Celebrations
+                    </span>
+                    <h3 className="font-serif text-2xl text-white mt-0.5">Seasonal Events Calendar</h3>
+                  </div>
+                  <span className="text-xs font-mono text-white/50">{festivalsData.length} Highlights</span>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  {festivalsData.map((ev, i) => (
+                    <div key={i} className="p-4 rounded-2xl bg-white/5 border border-white/10 space-y-2">
+                      <div className="flex justify-between items-start">
+                        <span className="text-xs font-semibold text-white">{ev.name}</span>
+                        <span className="text-[10px] font-mono text-brand-gold bg-brand-gold/10 px-2 py-0.5 rounded-full border border-brand-gold/20 font-bold">
+                          {ev.month}
+                        </span>
+                      </div>
+                      <p className="text-white/60 text-xs leading-relaxed">{ev.description}</p>
+                      <span className="text-[9px] font-mono text-white/40 uppercase block">Category: {ev.type}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
 
 
 
