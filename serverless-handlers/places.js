@@ -188,28 +188,33 @@ export default async function handler(req, res) {
     } catch {
       return res.status(503).json({ error: 'Place moderation is temporarily unavailable.' });
     }
-    const { id, status, admin_notes, name, country, description, category, priceFrom } = req.body || {};
+    const { id, status, admin_notes, name, country, description, category, priceFrom, image, gallery, amenities } = req.body || {};
 
-    if (!id || !status) {
-      return res.status(400).json({ error: 'Place ID and status are required.' });
+    if (!id) {
+      return res.status(400).json({ error: 'Place ID is required.' });
     }
 
     try {
       const updateFields = {
-        status,
-        admin_notes: admin_notes || '',
         updated_at: new Date().toISOString()
       };
 
-      if (status === 'APPROVED') {
-        updateFields.approved_at = new Date().toISOString();
-        updateFields.approved_by = 'admin';
+      if (status) {
+        updateFields.status = status;
+        if (status === 'APPROVED') {
+          updateFields.approved_at = new Date().toISOString();
+          updateFields.approved_by = 'admin';
+        }
       }
 
+      if (admin_notes !== undefined) updateFields.admin_notes = admin_notes;
       if (name) updateFields.name = name;
       if (country) updateFields.country = country;
       if (description) updateFields.description = description;
       if (category) updateFields.category = category;
+      if (image) updateFields.image = image;
+      if (Array.isArray(gallery)) updateFields.gallery = gallery;
+      if (Array.isArray(amenities)) updateFields.amenities = amenities;
       if (priceFrom) {
         updateFields.priceFrom = parseFloat(priceFrom);
         updateFields.price = `₹${parseFloat(priceFrom).toLocaleString('en-IN')}`;
@@ -217,7 +222,7 @@ export default async function handler(req, res) {
 
       await placesColl.updateOne({ $or: [{ _id: id }, { id: id }, { slug: id }] }, { $set: updateFields });
 
-      return res.status(200).json({ message: `Place updated status to ${status}.` });
+      return res.status(200).json({ message: `Place updated successfully.` });
     } catch (err) {
       console.error('[PATCH /api/places]', err);
       return res.status(500).json({ error: 'Failed to update place.' });
