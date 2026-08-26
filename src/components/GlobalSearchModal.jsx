@@ -164,19 +164,21 @@ export default function GlobalSearchModal({ isOpen, onClose }) {
       return;
     }
 
-    // Instant local matching so results appear in 0ms!
+    // Instant local matching for verified destinations
     const localMatches = searchLocalDestinations(query);
-    setResults({
-      places: localMatches,
-      packages: localMatches.map((p) => ({
-        id: `pkg-${p.id}`,
-        title: `${p.name} Exclusive Luxury Package`,
-        placeSlug: p.slug,
-        price: p.price
-      })),
-      experiences: [],
-      guides: []
-    });
+    if (localMatches.length > 0) {
+      setResults({
+        places: localMatches,
+        packages: localMatches.map((p) => ({
+          id: `pkg-${p.id}`,
+          title: `${p.name} Exclusive Luxury Package`,
+          placeSlug: p.slug,
+          price: p.price
+        })),
+        experiences: [],
+        guides: []
+      });
+    }
 
     setLoading(true);
     setError(null);
@@ -190,42 +192,57 @@ export default function GlobalSearchModal({ isOpen, onClose }) {
           fetch(`/api/external-places?q=${encodeURIComponent(query)}`, { signal: controller.signal })
         ]);
 
+        let combinedPlaces = [];
+        let packages = [];
+        let experiences = [];
+        let guides = [];
+
         if (res.ok) {
           const data = await res.json();
           if (data.results) {
-            // Merge backend places with local matches
-            const placeMap = new Map();
-            (data.results.places || []).forEach((p) => placeMap.set(p.slug || p.id, p));
-            localMatches.forEach((p) => {
-              if (!placeMap.has(p.slug || p.id)) placeMap.set(p.slug || p.id, p);
-            });
-
-            setResults({
-              places: Array.from(placeMap.values()),
-              packages: data.results.packages || [],
-              experiences: data.results.experiences || [],
-              guides: data.results.guides || []
-            });
+            combinedPlaces = data.results.places || [];
+            packages = data.results.packages || [];
+            experiences = data.results.experiences || [];
+            guides = data.results.guides || [];
           }
         }
 
+        let extPlacesList = [];
         if (extRes.ok) {
           const extData = await extRes.json();
-          setExternalPlaces(extData.places || []);
+          extPlacesList = extData.places || [];
+          setExternalPlaces(extPlacesList);
         }
+
+        // Merge backend places with local matches
+        const placeMap = new Map();
+        combinedPlaces.forEach((p) => placeMap.set(p.slug || p.id, p));
+        localMatches.forEach((p) => {
+          if (!placeMap.has(p.slug || p.id)) placeMap.set(p.slug || p.id, p);
+        });
+
+        // If no static places matched, add external places directly to main list
+        if (placeMap.size === 0 && extPlacesList.length > 0) {
+          extPlacesList.forEach((ep) => {
+            placeMap.set(ep.slug || ep.id, ep);
+          });
+        }
+
+        setResults({
+          places: Array.from(placeMap.values()),
+          packages,
+          experiences,
+          guides
+        });
 
         saveRecentSearch(query);
       } catch (err) {
         if (err.name === 'AbortError') return;
         console.error('Search API error:', err);
-        // Do not overwrite localMatches with error if local matches exist
-        if (localMatches.length === 0) {
-          setError('Could not complete live search. Please try again.');
-        }
       } finally {
         if (!controller.signal.aborted) setLoading(false);
       }
-    }, 200);
+    }, 180);
 
     return () => {
       clearTimeout(timer);
@@ -239,25 +256,16 @@ export default function GlobalSearchModal({ isOpen, onClose }) {
 
     if (activeTab === 'all' || activeTab === 'places') {
       results.places.forEach((p) => {
+        const isStatic = destinations.some((d) => d.slug === p.slug || d.id === p.id);
         list.push({
           type: 'place',
           id: p.slug || p.id,
           title: p.name,
-          subtitle: `${p.country || ''} • ${p.category || 'Sanctuary'}`,
+          subtitle: `${p.country || 'Global'} • ${p.category || 'Sanctuary'}`,
           price: p.price,
           image: p.image,
-          url: `/places/${p.slug || p.id}`
-        });
-      });
-
-      externalPlaces.forEach((ext) => {
-        list.push({
-          type: 'external',
-          id: ext.place_id,
-          title: ext.name,
-          subtitle: ext.displayName,
-          badge: 'Verified Destination',
-          url: `/travel?search=${encodeURIComponent(ext.name)}`
+          badge: isStatic ? 'Curated Sanctuary' : 'Worldwide Destination',
+          url: isStatic ? `/places/${p.slug || p.id}` : `/plan-trip?destination=${encodeURIComponent(p.name)}`
         });
       });
     }
@@ -270,7 +278,7 @@ export default function GlobalSearchModal({ isOpen, onClose }) {
           title: pkg.title,
           subtitle: 'Curated Itinerary Package',
           price: pkg.price,
-          url: `/places/${pkg.placeSlug || pkg.slug || ''}`
+          url: `/plan-trip?destination=${encodeURIComponent(query)}`
         });
       });
     }
@@ -289,7 +297,7 @@ export default function GlobalSearchModal({ isOpen, onClose }) {
     }
 
     return list;
-  }, [results, externalPlaces, activeTab]);
+  }, [results, activeTab, query]);
 
   // Keyboard navigation listener (ArrowUp, ArrowDown, Enter, Escape)
   useEffect(() => {
@@ -318,7 +326,6 @@ export default function GlobalSearchModal({ isOpen, onClose }) {
 
   const totalResultsCount =
     results.places.length +
-    externalPlaces.length +
     results.packages.length +
     results.experiences.length +
     results.guides.length;
@@ -348,7 +355,7 @@ export default function GlobalSearchModal({ isOpen, onClose }) {
               type="text"
               value={query}
               onChange={(e) => setQuery(e.target.value)}
-              placeholder="Search sanctuaries, countries, luxury stays, experiences..."
+              placeholder="Search any destination, country, city, island, luxury stay..."
               className="w-full bg-transparent text-white placeholder-white/40 text-base sm:text-lg focus:outline-none font-sans"
             />
             {query && (
@@ -376,7 +383,7 @@ export default function GlobalSearchModal({ isOpen, onClose }) {
             <div className="px-5 py-2.5 bg-black/40 border-b border-white/5 flex items-center gap-2 overflow-x-auto text-xs font-mono">
               {[
                 { id: 'all', label: 'All Results', count: totalResultsCount },
-                { id: 'places', label: 'Sanctuaries', count: results.places.length + externalPlaces.length },
+                { id: 'places', label: 'Destinations', count: results.places.length },
                 { id: 'packages', label: 'Packages', count: results.packages.length },
                 { id: 'experiences', label: 'Experiences', count: results.experiences.length }
               ].map((tab) => (
@@ -397,19 +404,13 @@ export default function GlobalSearchModal({ isOpen, onClose }) {
           )}
 
           {/* Body Content */}
-          <div ref={resultsContainerRef} className="p-5 sm:p-6 max-h-[62vh] overflow-y-auto font-sans">
+          <div ref={resultsContainerRef} className="p-5 sm:p-6 max-h-[62vh] overflow-y-auto font-sans space-y-5">
             {loading && results.places.length === 0 && (
               <div className="py-12 text-center text-white/60 space-y-3">
                 <div className="w-8 h-8 border-2 border-brand-gold border-t-transparent rounded-full animate-spin mx-auto" />
                 <p className="text-xs uppercase font-mono tracking-widest text-brand-gold">
-                  Searching global sanctuaries & packages...
+                  Searching global sanctuaries & worldwide places...
                 </p>
-              </div>
-            )}
-
-            {error && results.places.length === 0 && (
-              <div className="p-4 rounded-2xl bg-red-500/10 border border-red-500/30 text-red-300 text-xs text-center font-medium">
-                {error}
               </div>
             )}
 
@@ -444,10 +445,10 @@ export default function GlobalSearchModal({ isOpen, onClose }) {
 
                 <div>
                   <div className="text-[10px] font-mono text-white/40 uppercase tracking-widest mb-3">
-                    Trending Destinations
+                    Trending Worldwide Escapes
                   </div>
                   <div className="flex flex-wrap gap-2">
-                    {['Goa Retreats', 'Taj Mahal Agra', 'Swiss Alps Chalet', 'Kyoto Zen', 'Amalfi Coast', 'Bali Luxury Villas', 'Aspen Lodge'].map((term) => (
+                    {['Goa Retreats', 'Kyoto Zen', 'Amalfi Coast', 'Aspen Alps', 'Bali Villas', 'Paris Seine', 'Santorini', 'Swiss Alps', 'Ladakh'].map((term) => (
                       <button
                         key={term}
                         onClick={() => setQuery(term)}
@@ -460,40 +461,22 @@ export default function GlobalSearchModal({ isOpen, onClose }) {
                 </div>
 
                 <div className="pt-4 border-t border-white/5 flex items-center justify-between text-[11px] text-white/40 font-mono">
-                  <span>Tip: Use ↑ ↓ arrows to navigate results</span>
+                  <span>Tip: You can search any city, country, or island on Earth</span>
                   <span>Press ESC to exit</span>
                 </div>
               </div>
             )}
 
-            {/* No Results Found */}
-            {!loading && query.trim() && totalResultsCount === 0 && !error && (
-              <div className="py-12 text-center bg-white/5 rounded-3xl border border-white/10 p-6 space-y-4">
-                <span className="text-4xl block">🏖️</span>
-                <h4 className="font-serif text-xl text-white">No Sanctuaries Found for "{query}"</h4>
-                <p className="text-white/60 text-xs max-w-md mx-auto">
-                  We couldn't find a direct match. You can submit this location as a new sanctuary to Horizon Travels!
-                </p>
-                <Link
-                  to="/suggest-place"
-                  onClick={onClose}
-                  className="inline-flex items-center gap-2 px-6 py-2.5 rounded-full bg-brand-gold text-black text-xs font-bold uppercase tracking-widest hover:bg-white transition-all shadow-lg"
-                >
-                  <span>✨ Suggest This Sanctuary</span>
-                </Link>
-              </div>
-            )}
-
-            {/* Render Flat Filtered Items with Keyboard Selection */}
+            {/* Results Grid */}
             {query.trim() && totalResultsCount > 0 && (
-              <div className="space-y-3">
+              <div className="space-y-4">
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
                   {flatItems.map((item, idx) => {
                     const isSelected = selectedIndex === idx;
 
                     return (
                       <Link
-                        key={`${item.type}-${item.id}`}
+                        key={`${item.type}-${item.id}-${idx}`}
                         to={item.url}
                         onClick={onClose}
                         className={`p-3 rounded-2xl border transition-all flex items-center gap-3 group relative ${
@@ -522,7 +505,7 @@ export default function GlobalSearchModal({ isOpen, onClose }) {
                               {item.subtitle}
                             </span>
                             {item.badge && (
-                              <span className="text-[8.5px] font-mono bg-brand-gold/15 text-brand-gold px-1.5 py-0.2 rounded">
+                              <span className="text-[8.5px] font-mono bg-brand-gold/15 text-brand-gold px-1.5 py-0.2 rounded flex-shrink-0">
                                 {item.badge}
                               </span>
                             )}
@@ -545,6 +528,39 @@ export default function GlobalSearchModal({ isOpen, onClose }) {
                       </Link>
                     );
                   })}
+                </div>
+
+                {/* 1-Click Worldwide Planning Actions */}
+                <div className="p-3.5 rounded-2xl bg-white/5 border border-white/10 space-y-2">
+                  <div className="text-[10px] font-mono text-brand-gold uppercase tracking-wider font-semibold">
+                    Instant Global Actions for "{query}"
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 text-xs">
+                    <Link
+                      to={`/plan-trip?destination=${encodeURIComponent(query)}`}
+                      onClick={onClose}
+                      className="p-2.5 rounded-xl bg-brand-gold/10 hover:bg-brand-gold/20 border border-brand-gold/30 text-brand-gold flex items-center gap-2 transition-colors font-medium"
+                    >
+                      <span>✨</span>
+                      <span className="truncate">Plan AI Trip to {query}</span>
+                    </Link>
+                    <Link
+                      to={`/flights?to=${encodeURIComponent(query)}`}
+                      onClick={onClose}
+                      className="p-2.5 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-white/90 flex items-center gap-2 transition-colors font-medium"
+                    >
+                      <span>🛫</span>
+                      <span className="truncate">Search Flights to {query}</span>
+                    </Link>
+                    <Link
+                      to={`/hotels?city=${encodeURIComponent(query)}`}
+                      onClick={onClose}
+                      className="p-2.5 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-white/90 flex items-center gap-2 transition-colors font-medium"
+                    >
+                      <span>🏨</span>
+                      <span className="truncate">Find 5-Star Stays</span>
+                    </Link>
+                  </div>
                 </div>
               </div>
             )}

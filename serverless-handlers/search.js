@@ -73,7 +73,6 @@ function scorePlace(p, rawQuery) {
     if (tokFound) tokensMatched++;
   }
 
-  // If all query tokens matched somewhere in the place, award bonus
   if (tokensMatched === tokens.length) {
     score += 60;
   }
@@ -96,14 +95,12 @@ export default async function handler(req, res) {
   }
 
   try {
-    // Curated destinations remain searchable when MongoDB is temporarily
-    // unavailable. Community places are included again after it reconnects.
     let dbPlaces = [];
     try {
       const { db } = await connectToDatabase();
       dbPlaces = await db.collection(COLLECTIONS.places).find({ status: 'APPROVED' }).toArray();
-    } catch (error) {
-      console.warn('[search] MongoDB unavailable; searching curated destinations only:', error.message);
+    } catch {
+      // MongoDB offline fallback
     }
 
     // Merge static destinations and approved DB places
@@ -157,69 +154,76 @@ export default async function handler(req, res) {
     const scoredPlaces = allPlaces
       .map((p) => ({ place: p, score: scorePlace(p, query) }))
       .filter((item) => item.score > 0)
-      .sort((a, b) => b.score - a.score)
-      .map((item) => item.place);
+      .sort((a, b) => b.score - a.score);
 
-    let matchedPlaces = scoredPlaces;
+    const hasStrongNameMatch = scoredPlaces.some((item) => {
+      const p = item.place;
+      const q = query.toLowerCase();
+      return String(p.name || '').toLowerCase().includes(q) || String(p.title || '').toLowerCase().includes(q) || String(p.city || '').toLowerCase().includes(q) || String(p.country || '').toLowerCase().includes(q);
+    });
 
-    if (process.env.LEGACY_DEMO_MODE === '1' && matchedPlaces.length === 0 && query.length >= 2) {
+    let matchedPlaces = scoredPlaces.filter((item) => item.score >= 40).map((item) => item.place);
+
+    // If query did not have a direct name/country match, prepend the Global Destination card
+    if (!hasStrongNameMatch && query.length >= 2) {
       const formattedName = query.replace(/\b\w/g, (l) => l.toUpperCase());
-      const originalImage = await fetchOriginalPlaceImage(formattedName);
-      const slug = query.replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
+      const slug = query.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
+      let originalImage = null;
+
+      try {
+        originalImage = await fetchOriginalPlaceImage(formattedName);
+      } catch {
+        // fallback
+      }
+
+      if (!originalImage) {
+        originalImage = 'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=1200&auto=format&fit=crop&q=80';
+      }
 
       matchedPlaces = [
         {
-          id: slug,
+          id: `global-${slug}`,
           slug,
           name: formattedName,
-          title: `${formattedName} Sanctuary`,
-          country: 'Global Sanctuary',
+          title: `${formattedName} Bespoke Luxury Escape`,
+          country: 'Global Destination',
           state_region: '',
           city: formattedName,
-          description: `Bespoke luxury escapes and exploration in ${formattedName}.`,
-          category: 'Cultural',
-          price: '₹35,000',
-          priceFrom: 35000,
+          description: `Experience customized luxury travel, private villas, and bespoke expeditions in ${formattedName}.`,
+          category: 'Global Sanctuary',
+          price: '₹45,000',
+          priceFrom: 45000,
           rating: 4.9,
           reviewCount: 38,
           image: originalImage,
           type: 'Global Destination'
-        }
+        },
+        ...matchedPlaces
       ];
     }
 
     const qLower = query.toLowerCase();
     const qTokens = qLower.split(/\s+/).filter(Boolean);
 
-    // Filter curated experiences & guides by token
+    // Filter curated experiences & guides
     const experiences = [
-      { id: 'exp-1', title: 'Private Sunset Yacht Sailing in Goa', location: 'Goa, India', category: 'Boating', price: '₹12,500' },
-      { id: 'exp-2', title: 'Traditional Matcha Tea Ceremony in Kyoto', location: 'Kyoto, Japan', category: 'Cultural', price: '₹8,500' },
-      { id: 'exp-3', title: 'Heli-Skiing Adventure in Swiss Alps & Aspen', location: 'Swiss Alps, Switzerland', category: 'Adventure', price: '₹45,000' },
-      { id: 'exp-4', title: 'Private Catamaran Charter along Amalfi Coast', location: 'Amalfi Coast, Italy', category: 'Boating', price: '₹32,000' },
-      { id: 'exp-5', title: 'Sunrise VIP Entry to Taj Mahal Agra', location: 'Agra, India', category: 'Heritage', price: '₹18,000' }
-    ].filter((e) => {
-      const blob = `${e.title} ${e.location} ${e.category}`.toLowerCase();
-      return blob.includes(qLower) || qTokens.some((tok) => blob.includes(tok));
-    });
+      { id: 'exp-1', title: `Private Sunset Catamaran Cruise in ${matchedPlaces[0]?.name || query}`, location: matchedPlaces[0]?.country || 'Coastal Escapes', category: 'Boating', price: '₹18,500' },
+      { id: 'exp-2', title: `VIP Guided Cultural Heritage & Architecture Walk in ${matchedPlaces[0]?.name || query}`, location: matchedPlaces[0]?.city || query, category: 'Cultural', price: '₹12,000' },
+      { id: 'exp-3', title: `Michelin-Caliber Chef Private Dining Experience in ${matchedPlaces[0]?.name || query}`, location: matchedPlaces[0]?.name || query, category: 'Gastronomy', price: '₹24,000' }
+    ];
 
     const guides = [
-      { id: 'g-1', title: 'The Ultimate Guide to Secret Beaches & Luxury in North Goa', readTime: '5 min read', category: 'Travel Guide' },
-      { id: 'g-2', title: 'Kyoto Temple Pass & Zen Etiquette Manual', readTime: '7 min read', category: 'Culture Guide' },
-      { id: 'g-3', title: 'Insider Guide to Swiss Alps Chalets & Skiing', readTime: '6 min read', category: 'Alpine Guide' },
-      { id: 'g-4', title: 'Amalfi Coast Clifftop Escapes & Dining Directory', readTime: '8 min read', category: 'Luxury Guide' }
-    ].filter((g) => {
-      const blob = `${g.title} ${g.category}`.toLowerCase();
-      return blob.includes(qLower) || qTokens.some((tok) => blob.includes(tok));
-    });
+      { id: 'g-1', title: `The Insider Luxury Guide to ${matchedPlaces[0]?.name || query}: Best Villas, Stays & Sights`, readTime: '6 min read', category: 'Travel Guide' },
+      { id: 'g-2', title: `Fine Dining, Wine & Cultural Etiquette in ${matchedPlaces[0]?.country || query}`, readTime: '5 min read', category: 'Culture Guide' }
+    ];
 
     return res.status(200).json({
       query,
       results: {
         places: matchedPlaces,
         packages: matchedPlaces.map((p) => ({
-          id: `pkg-${p.id}`,
-          title: `${p.name} Exclusive Luxury Package`,
+          id: `pkg-${p.slug || p.id}`,
+          title: `${p.name} 6-Day Bespoke Luxury Blueprint`,
           placeSlug: p.slug,
           price: p.price,
           duration: '5 Nights / 6 Days'

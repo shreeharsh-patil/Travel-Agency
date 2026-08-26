@@ -345,20 +345,64 @@ export default function TravelPage() {
         {loading ? (
           <DestinationGridSkeleton count={6} />
         ) : filteredPlaces.length === 0 ? (
-          <div className="text-center py-20 bg-white/5 rounded-3xl border border-white/10 space-y-4">
-            <span className="text-4xl block">🏝️</span>
-            <h3 className="font-serif text-2xl text-white">No Destinations Found</h3>
-            <p className="text-white/60 text-xs max-w-sm mx-auto">
-              No places match your filter criteria. Try clearing filters or suggesting a new place.
+          <div className="text-center py-16 px-6 bg-white/5 rounded-3xl border border-white/10 space-y-5 max-w-2xl mx-auto">
+            <span className="text-4xl block">🌍</span>
+            <h3 className="font-serif text-2xl text-white">
+              {searchQuery ? `Exploring "${searchQuery}" Worldwide` : 'No Destinations Found'}
+            </h3>
+            <p className="text-white/60 text-xs max-w-md mx-auto leading-relaxed">
+              {searchQuery
+                ? `"${searchQuery}" is not yet in our static curated collection, but you can plan an instant bespoke AI itinerary, check flights, or submit it as a new sanctuary!`
+                : 'No places match your active filter criteria. Try clearing filters or suggesting a new place.'}
             </p>
-            <div className="flex justify-center gap-3">
-              <button onClick={clearAllFilters} className="px-6 py-2.5 rounded-full border border-white/20 text-white text-xs font-bold uppercase tracking-widest hover:bg-white hover:text-black transition-all">
-                Clear Filters
-              </button>
-              <Link to="/suggest-place" className="px-6 py-2.5 rounded-full bg-brand-gold text-black text-xs font-bold uppercase tracking-widest hover:bg-white transition-all">
-                + Suggest a Place
-              </Link>
-            </div>
+
+            {searchQuery ? (
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2">
+                <Link
+                  to={`/plan-trip?destination=${encodeURIComponent(searchQuery)}`}
+                  className="px-5 py-3 rounded-2xl bg-brand-gold text-black text-xs font-bold uppercase tracking-wider hover:bg-white transition-all shadow-lg flex items-center justify-center gap-2"
+                >
+                  <span>✨</span>
+                  <span>Plan AI Itinerary to {searchQuery}</span>
+                </Link>
+                <Link
+                  to={`/flights?to=${encodeURIComponent(searchQuery)}`}
+                  className="px-5 py-3 rounded-2xl bg-white/10 hover:bg-white/20 border border-white/15 text-white text-xs font-semibold uppercase tracking-wider transition-all flex items-center justify-center gap-2"
+                >
+                  <span>🛫</span>
+                  <span>Search Flights to {searchQuery}</span>
+                </Link>
+                <Link
+                  to={`/hotels?city=${encodeURIComponent(searchQuery)}`}
+                  className="px-5 py-3 rounded-2xl bg-white/10 hover:bg-white/20 border border-white/15 text-white text-xs font-semibold uppercase tracking-wider transition-all flex items-center justify-center gap-2"
+                >
+                  <span>🏨</span>
+                  <span>Find Hotels in {searchQuery}</span>
+                </Link>
+                <Link
+                  to={`/suggest-place?name=${encodeURIComponent(searchQuery)}`}
+                  className="px-5 py-3 rounded-2xl bg-brand-gold/15 hover:bg-brand-gold/25 border border-brand-gold/30 text-brand-gold text-xs font-bold uppercase tracking-wider transition-all flex items-center justify-center gap-2"
+                >
+                  <span>🌴</span>
+                  <span>Suggest Sanctuary</span>
+                </Link>
+              </div>
+            ) : (
+              <div className="flex justify-center gap-3">
+                <button
+                  onClick={clearAllFilters}
+                  className="px-6 py-2.5 rounded-full border border-white/20 text-white text-xs font-bold uppercase tracking-widest hover:bg-white hover:text-black transition-all"
+                >
+                  Clear Filters
+                </button>
+                <Link
+                  to="/suggest-place"
+                  className="px-6 py-2.5 rounded-full bg-brand-gold text-black text-xs font-bold uppercase tracking-widest hover:bg-white transition-all"
+                >
+                  + Suggest a Place
+                </Link>
+              </div>
+            )}
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
