@@ -91,6 +91,9 @@ export default function PlaceDetailPage() {
   const [airQualityData, setAirQualityData] = useState(null);
   const [wikiData, setWikiData] = useState(null);
   const [countryData, setCountryData] = useState(null);
+  const [travelAdvisory, setTravelAdvisory] = useState(null);
+  const [nearbyLandmarks, setNearbyLandmarks] = useState([]);
+  const [packingGuide, setPackingGuide] = useState(null);
   const [explorerPhotos, setExplorerPhotos] = useState([]);
   const [freeAttractions, setFreeAttractions] = useState([]);
   const [sunTimesData, setSunTimesData] = useState(null);
@@ -139,13 +142,13 @@ export default function PlaceDetailPage() {
         setComments(cmtData.comments || []);
       }
 
-      // Free API: Fetch live weather
+      // Fetch live weather
       fetch(`/api/weather?city=${encodeURIComponent(data.place.name || slug)}`)
         .then(r => r.json())
         .then(w => setWeatherData(w))
         .catch(() => {});
 
-      // Free API: Fetch Wikipedia summary
+      // Fetch Wikipedia summary
       fetch(`/api/wiki-summary?q=${encodeURIComponent(data.place.name || slug)}`)
         .then(r => r.json())
         .then(w => {
@@ -153,7 +156,7 @@ export default function PlaceDetailPage() {
         })
         .catch(() => {});
 
-      // Free API: Fetch Country Intelligence & Traveler Essentials
+      // Fetch Country Intelligence & Traveler Essentials
       fetch(`/api/country-info?country=${encodeURIComponent(data.place.country || 'India')}`)
         .then(r => r.json())
         .then(c => {
@@ -161,7 +164,23 @@ export default function PlaceDetailPage() {
         })
         .catch(() => {});
 
-      // Free API: Fetch Real Explorer Photography (Wikimedia Commons)
+      // Fetch Official Travel Advisory & Safety
+      fetch(`/api/travel-advisory?country=${encodeURIComponent(data.place.country || 'India')}`)
+        .then(r => r.json())
+        .then(ta => {
+          if (ta && ta.title) setTravelAdvisory(ta);
+        })
+        .catch(() => {});
+
+      // Fetch Smart Packing Checklist
+      fetch(`/api/smart-packing?category=${encodeURIComponent(data.place.category || 'Beach')}&days=4`)
+        .then(r => r.json())
+        .then(pg => {
+          if (pg && pg.checklist) setPackingGuide(pg);
+        })
+        .catch(() => {});
+
+      // Fetch Real Explorer Photography
       fetch(`/api/external-images?query=${encodeURIComponent(data.place.name || slug)}&limit=6`)
         .then(r => r.json())
         .then(ep => {
@@ -173,30 +192,38 @@ export default function PlaceDetailPage() {
 
       // Only request location services when this place actually has coordinates
       if (Number.isFinite(placeLat) && Number.isFinite(placeLon)) {
-        // Free API: Sun Times
         fetch(`/api/sun-times?lat=${placeLat}&lon=${placeLon}`)
           .then(r => r.json())
           .then(s => setSunTimesData(s))
           .catch(() => {});
 
-        // Free API: UV Index
         fetch(`/api/uv-index?lat=${placeLat}&lon=${placeLon}`)
           .then(r => r.json())
           .then(u => setUvIndex(u))
           .catch(() => {});
 
-        // Free API: Air Quality Index
         fetch(`/api/air-quality?lat=${placeLat}&lon=${placeLon}`)
           .then(r => r.json())
           .then(aq => setAirQualityData(aq))
           .catch(() => {});
+
+        // Fetch Nearby Cultural Monuments within 10km (Wikipedia Geosearch)
+        fetch(`/api/nearby-cultural?lat=${placeLat}&lon=${placeLon}&radius=10000`)
+          .then(r => r.json())
+          .then(nc => {
+            if (Array.isArray(nc.landmarks) && nc.landmarks.length > 0) {
+              setNearbyLandmarks(nc.landmarks);
+            }
+          })
+          .catch(() => {});
       }
 
-      // Free API: Free attractions
+      // Fetch free attractions
       fetch(`/api/free-attractions?destination=${encodeURIComponent(data.place.name || slug)}`)
         .then(r => r.json())
         .then(fa => setFreeAttractions(fa.attractions || []))
         .catch(() => {});
+
 
       // Fetch trip expense estimate (INR) — handled in a dedicated effect
       // so changing days/travellers doesn't reload the whole page.
@@ -814,6 +841,101 @@ export default function PlaceDetailPage() {
                 )}
               </div>
             )}
+
+            {/* Travel Advisory & Safety Guidelines */}
+            {travelAdvisory && (
+              <div className="bg-[#121214] border border-white/10 rounded-3xl p-6 sm:p-8 space-y-4 shadow-xl">
+                <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-2 border-b border-white/10 pb-4">
+                  <div>
+                    <span className="text-[10px] font-mono text-brand-gold uppercase tracking-widest block">
+                      🛡️ Official Safety & Entry Intelligence
+                    </span>
+                    <h3 className="font-serif text-2xl text-white mt-0.5">{travelAdvisory.title}</h3>
+                  </div>
+                  <span className="text-[10px] font-mono text-white/40">
+                    Verified Advisory
+                  </span>
+                </div>
+                <p className="text-white/80 text-sm leading-relaxed">{travelAdvisory.summary}</p>
+                {travelAdvisory.advisorySnippet && (
+                  <div className="p-4 rounded-2xl bg-white/[0.03] border border-white/5 text-xs text-white/70 font-mono leading-relaxed">
+                    📌 {travelAdvisory.advisorySnippet}
+                  </div>
+                )}
+                {travelAdvisory.topics && travelAdvisory.topics.length > 0 && (
+                  <div className="flex flex-wrap gap-2 pt-2">
+                    {travelAdvisory.topics.slice(0, 5).map((topic, i) => (
+                      <span key={i} className="px-3 py-1 rounded-full bg-white/5 border border-white/10 text-white/70 text-[11px] font-mono">
+                        ✓ {topic.title}
+                      </span>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Smart Packing Checklist */}
+            {packingGuide && packingGuide.checklist && (
+              <div className="bg-[#121214] border border-white/10 rounded-3xl p-6 sm:p-8 space-y-5 shadow-xl">
+                <div className="flex justify-between items-center border-b border-white/10 pb-4">
+                  <div>
+                    <span className="text-[10px] font-mono text-brand-gold uppercase tracking-widest block">
+                      🎒 Climate & Itinerary Preparation
+                    </span>
+                    <h3 className="font-serif text-2xl text-white mt-0.5">Curated Packing Guide</h3>
+                  </div>
+                  <span className="text-xs font-mono text-brand-gold bg-brand-gold/10 px-3 py-1 rounded-full border border-brand-gold/20">
+                    {packingGuide.destinationCategory} Edition
+                  </span>
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  {packingGuide.checklist.map((item, i) => (
+                    <div key={i} className="p-3.5 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-between text-xs">
+                      <div className="flex items-center gap-2.5">
+                        <span className="text-brand-gold text-sm font-mono">▫</span>
+                        <span className="text-white/90 font-medium">{item.item}</span>
+                      </div>
+                      <span className="text-[10px] font-mono text-white/40">{item.category}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Nearby Cultural & Historic Landmarks */}
+            {nearbyLandmarks && nearbyLandmarks.length > 0 && (
+              <div className="bg-[#121214] border border-white/10 rounded-3xl p-6 sm:p-8 space-y-5 shadow-xl">
+                <div className="flex justify-between items-center border-b border-white/10 pb-4">
+                  <div>
+                    <span className="text-[10px] font-mono text-brand-gold uppercase tracking-widest block">
+                      🏛️ Nearby Heritage & Monuments (Within 10km)
+                    </span>
+                    <h3 className="font-serif text-2xl text-white mt-0.5">Historic Vicinity Explorer</h3>
+                  </div>
+                  <span className="text-xs font-mono text-white/50">{nearbyLandmarks.length} Sites</span>
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  {nearbyLandmarks.map((lm) => (
+                    <a
+                      key={lm.id}
+                      href={lm.wikiUrl}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="p-3.5 rounded-2xl bg-white/5 border border-white/10 hover:border-brand-gold/50 transition-all flex items-center justify-between text-xs group"
+                    >
+                      <div>
+                        <span className="text-white font-medium group-hover:text-brand-gold transition-colors block">
+                          {lm.title}
+                        </span>
+                        <span className="text-white/40 text-[10px] font-mono">{lm.distanceKm} km away</span>
+                      </div>
+                      <span className="text-white/40 group-hover:text-white transition-colors text-sm">↗</span>
+                    </a>
+                  ))}
+                </div>
+              </div>
+            )}
+
 
 
 
