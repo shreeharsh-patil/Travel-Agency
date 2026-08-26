@@ -88,6 +88,8 @@ export default function PlaceDetailPage() {
   const [reviewSuccess, setReviewSuccess] = useState(null);
 
   const [weatherData, setWeatherData] = useState(null);
+  const [airQualityData, setAirQualityData] = useState(null);
+  const [wikiData, setWikiData] = useState(null);
   const [freeAttractions, setFreeAttractions] = useState([]);
   const [sunTimesData, setSunTimesData] = useState(null);
   const [comments, setComments] = useState([]);
@@ -135,28 +137,43 @@ export default function PlaceDetailPage() {
         setComments(cmtData.comments || []);
       }
 
-      // Fetch live free weather
-      fetch(`/api/weather?city=${data.place.name || slug}`)
+      // Free API: Fetch live weather
+      fetch(`/api/weather?city=${encodeURIComponent(data.place.name || slug)}`)
         .then(r => r.json())
         .then(w => setWeatherData(w))
         .catch(() => {});
 
-      // Only request location services when this place actually has
-      // coordinates. Never silently use another destination's location.
+      // Free API: Fetch Wikipedia summary
+      fetch(`/api/wiki-summary?q=${encodeURIComponent(data.place.name || slug)}`)
+        .then(r => r.json())
+        .then(w => {
+          if (w && w.extract) setWikiData(w);
+        })
+        .catch(() => {});
+
+      // Only request location services when this place actually has coordinates
       if (Number.isFinite(placeLat) && Number.isFinite(placeLon)) {
+        // Free API: Sun Times
         fetch(`/api/sun-times?lat=${placeLat}&lon=${placeLon}`)
           .then(r => r.json())
           .then(s => setSunTimesData(s))
           .catch(() => {});
 
+        // Free API: UV Index
         fetch(`/api/uv-index?lat=${placeLat}&lon=${placeLon}`)
           .then(r => r.json())
           .then(u => setUvIndex(u))
           .catch(() => {});
+
+        // Free API: Air Quality Index
+        fetch(`/api/air-quality?lat=${placeLat}&lon=${placeLon}`)
+          .then(r => r.json())
+          .then(aq => setAirQualityData(aq))
+          .catch(() => {});
       }
 
-      // Fetch free attractions
-      fetch(`/api/free-attractions?destination=${data.place.name || slug}`)
+      // Free API: Free attractions
+      fetch(`/api/free-attractions?destination=${encodeURIComponent(data.place.name || slug)}`)
         .then(r => r.json())
         .then(fa => setFreeAttractions(fa.attractions || []))
         .catch(() => {});
@@ -586,33 +603,80 @@ export default function PlaceDetailPage() {
               <PlaceMap place={place} />
             </div>
 
-            {/* Live Free Weather Widget (Open-Meteo API) */}
-            {weatherData && (
-              <div className="bg-[#141418] border border-brand-gold/30 rounded-3xl p-6 space-y-4 shadow-xl">
-                <div className="flex justify-between items-center border-b border-white/10 pb-4">
+            {/* Wikipedia Historical & Cultural Capsule (Free Wikipedia REST API) */}
+            {wikiData && (
+              <div className="bg-[#121214] border border-white/10 rounded-3xl p-6 sm:p-8 space-y-4">
+                <div className="flex justify-between items-start border-b border-white/10 pb-4">
                   <div>
                     <span className="text-[10px] font-mono text-brand-gold uppercase tracking-widest block">
-                      ⚡ Live Weather Forecast
+                      📖 Heritage & History (Wikipedia Open API)
                     </span>
+                    <h3 className="font-serif text-2xl text-white mt-0.5">Cultural Insights: {wikiData.title}</h3>
+                  </div>
+                  {wikiData.wikiUrl && (
+                    <a
+                      href={wikiData.wikiUrl}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="text-xs font-mono text-white/50 hover:text-brand-gold transition-colors flex items-center gap-1"
+                    >
+                      Read full article ↗
+                    </a>
+                  )}
+                </div>
+                <p className="text-white/80 text-sm leading-relaxed">{wikiData.extract}</p>
+              </div>
+            )}
 
+            {/* Live Weather Forecast & Air Quality (Free Open-Meteo APIs) */}
+            {(weatherData || airQualityData || uvIndex) && (
+              <div className="bg-[#141418] border border-brand-gold/30 rounded-3xl p-6 space-y-5 shadow-xl">
+                <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-3 border-b border-white/10 pb-4">
+                  <div>
+                    <span className="text-[10px] font-mono text-brand-gold uppercase tracking-widest block">
+                      ⚡ Live Destination Intelligence
+                    </span>
                     <h4 className="font-serif text-2xl text-white mt-0.5">
-                      {weatherData.city} • {weatherData.temperature}
+                      {weatherData?.city || place.name} • {weatherData?.temperature || 'Live Conditions'}
                     </h4>
                   </div>
-                  <span className="text-sm font-mono text-white/80 bg-white/10 px-3 py-1 rounded-full">
-                    {weatherData.condition}
-                  </span>
+                  <div className="flex flex-wrap gap-2">
+                    {weatherData?.condition && (
+                      <span className="text-xs font-mono text-white/90 bg-white/10 px-3 py-1 rounded-full border border-white/10">
+                        {weatherData.condition}
+                      </span>
+                    )}
+                    {airQualityData && (
+                      <span className={`text-xs font-mono px-3 py-1 rounded-full border ${
+                        airQualityData.aqi <= 50
+                          ? 'bg-green-500/20 text-green-300 border-green-500/30'
+                          : airQualityData.aqi <= 100
+                          ? 'bg-yellow-500/20 text-yellow-300 border-yellow-500/30'
+                          : 'bg-red-500/20 text-red-300 border-red-500/30'
+                      }`}>
+                        AQI {airQualityData.aqi} • {airQualityData.level}
+                      </span>
+                    )}
+                  </div>
                 </div>
 
-                <div className="grid grid-cols-3 gap-3 text-center text-xs font-mono">
-                  {(weatherData.forecast || []).map((f, i) => (
-                    <div key={i} className="p-3 rounded-2xl bg-white/5 border border-white/10 space-y-1">
-                      <span className="text-white/40 block text-[10px] uppercase">{f.date}</span>
-                      <span className="text-brand-gold font-bold">{f.maxTemp}</span>
-                      <span className="text-white/40 block text-[10px]">{f.minTemp}</span>
-                    </div>
-                  ))}
-                </div>
+                {weatherData?.forecast && (
+                  <div className="grid grid-cols-3 gap-3 text-center text-xs font-mono">
+                    {weatherData.forecast.map((f, i) => (
+                      <div key={i} className="p-3 rounded-2xl bg-white/5 border border-white/10 space-y-1">
+                        <span className="text-white/40 block text-[10px] uppercase">{f.date}</span>
+                        <span className="text-brand-gold font-bold">{f.maxTemp}</span>
+                        <span className="text-white/40 block text-[10px]">{f.minTemp}</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {airQualityData?.advice && (
+                  <p className="text-xs font-mono text-white/60 bg-white/[0.03] p-3 rounded-xl border border-white/5">
+                    🌱 <strong>Eco Note:</strong> {airQualityData.advice}
+                  </p>
+                )}
               </div>
             )}
 
@@ -641,6 +705,7 @@ export default function PlaceDetailPage() {
                 </div>
               </div>
             )}
+
 
 
             {/* Free Places to Visit (₹0 Entry) */}
