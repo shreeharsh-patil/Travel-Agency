@@ -90,6 +90,7 @@ export default function PlaceDetailPage() {
   const [weatherData, setWeatherData] = useState(null);
   const [airQualityData, setAirQualityData] = useState(null);
   const [wikiData, setWikiData] = useState(null);
+  const [explorerPhotos, setExplorerPhotos] = useState([]);
   const [freeAttractions, setFreeAttractions] = useState([]);
   const [sunTimesData, setSunTimesData] = useState(null);
   const [comments, setComments] = useState([]);
@@ -148,6 +149,16 @@ export default function PlaceDetailPage() {
         .then(r => r.json())
         .then(w => {
           if (w && w.extract) setWikiData(w);
+        })
+        .catch(() => {});
+
+      // Free API: Fetch Real Explorer Photography (Wikimedia Commons)
+      fetch(`/api/external-images?query=${encodeURIComponent(data.place.name || slug)}&limit=6`)
+        .then(r => r.json())
+        .then(ep => {
+          if (Array.isArray(ep.images) && ep.images.length > 0) {
+            setExplorerPhotos(ep.images);
+          }
         })
         .catch(() => {});
 
@@ -574,6 +585,38 @@ export default function PlaceDetailPage() {
                       </div>
                     );
                   })}
+                </div>
+              </div>
+            )}
+
+            {/* Live Explorer Photos (Free Wikimedia Commons API) */}
+            {explorerPhotos && explorerPhotos.length > 0 && (
+              <div className="bg-[#121214] border border-white/10 rounded-3xl p-6 sm:p-8 space-y-5">
+                <div className="flex justify-between items-center border-b border-white/10 pb-4">
+                  <div>
+                    <span className="text-[10px] font-mono text-brand-gold uppercase tracking-widest block">
+                      📷 Authentic Travel Photography (Free Open API)
+                    </span>
+                    <h3 className="font-serif text-2xl text-white mt-0.5">Real Explorer Photos: {place.name || place.title}</h3>
+                  </div>
+                  <span className="text-xs font-mono text-white/50">{explorerPhotos.length} photos</span>
+                </div>
+
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
+                  {explorerPhotos.map((photo, i) => (
+                    <div key={i} className="relative group aspect-square rounded-2xl overflow-hidden border border-white/10 bg-black/40">
+                      <img
+                        src={photo.src}
+                        alt={photo.title || `${place.name} explorer photo`}
+                        loading="lazy"
+                        className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
+                      />
+                      <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/30 to-transparent opacity-0 group-hover:opacity-100 transition-opacity p-3 flex flex-col justify-end">
+                        <p className="text-[11px] text-white font-medium line-clamp-2">{photo.title}</p>
+                        <span className="text-[9px] font-mono text-brand-gold mt-0.5">By {photo.author}</span>
+                      </div>
+                    </div>
+                  ))}
                 </div>
               </div>
             )}

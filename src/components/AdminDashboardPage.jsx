@@ -277,6 +277,32 @@ export default function AdminDashboardPage() {
     }
   };
 
+  const handleAutoFetchPlacePhotos = async () => {
+    if (!editingPlace?.name) return;
+    setPlaceUploading(true);
+    setPlaceUploadError(null);
+    try {
+      const res = await fetch(`/api/external-images?query=${encodeURIComponent(editingPlace.name + ' ' + (editingPlace.country || ''))}&limit=6`);
+      const data = await res.json();
+      if (res.ok && Array.isArray(data.images) && data.images.length > 0) {
+        const fetchedUrls = data.images.map(img => img.src);
+        setEditingPlace(prev => ({
+          ...prev,
+          image: prev.image || fetchedUrls[0],
+          gallery: Array.from(new Set([...(prev.gallery || []), ...fetchedUrls])).slice(0, 8)
+        }));
+        notify(`Auto-fetched ${fetchedUrls.length} original photos from Wikimedia Open API!`);
+      } else {
+        throw new Error('No open photos found for this destination name.');
+      }
+    } catch (err) {
+      console.error('Auto fetch place photos error:', err);
+      setPlaceUploadError(err.message || 'Auto-fetch failed.');
+    } finally {
+      setPlaceUploading(false);
+    }
+  };
+
   const removePlaceGalleryImage = (idx) => {
     setEditingPlace((prev) => {
       const newGallery = prev.gallery.filter((_, i) => i !== idx);
@@ -803,9 +829,21 @@ export default function AdminDashboardPage() {
                 <div className="space-y-3">
                   <div className="flex items-center justify-between">
                     <label className="text-xs uppercase font-mono text-white/60">
-                      Original Photos (Cloudinary CDN)
+                      Original Photos (Cloudinary CDN & Free Open APIs)
                     </label>
-                    <span className="text-xs text-white/40">{editingPlace.gallery?.length || 0}/8 photos</span>
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={handleAutoFetchPlacePhotos}
+                        disabled={placeUploading}
+                        className="px-3 py-1 rounded-full bg-brand-gold/20 hover:bg-brand-gold text-brand-gold hover:text-black text-[11px] font-mono font-semibold transition-all flex items-center gap-1.5 border border-brand-gold/30 disabled:opacity-50"
+                        title="Automatically fetch real authentic photos from Wikimedia Commons free API"
+                      >
+                        <span>⚡</span>
+                        <span>Auto-Fetch Free Photos</span>
+                      </button>
+                      <span className="text-xs text-white/40">{editingPlace.gallery?.length || 0}/8 photos</span>
+                    </div>
                   </div>
 
                   <div className="p-6 border-2 border-dashed border-white/10 rounded-2xl bg-white/[0.02] text-center hover:border-brand-gold/50 transition-colors">
