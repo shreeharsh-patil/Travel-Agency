@@ -96,6 +96,10 @@ export default function PlaceDetailPage() {
   const [packingGuide, setPackingGuide] = useState(null);
   const [transitData, setTransitData] = useState(null);
   const [festivalsData, setFestivalsData] = useState([]);
+  const [itineraryData, setItineraryData] = useState([]);
+  const [gastronomyData, setGastronomyData] = useState(null);
+  const [visaData, setVisaData] = useState(null);
+  const [selectedPassport, setSelectedPassport] = useState('IN');
   const [explorerPhotos, setExplorerPhotos] = useState([]);
   const [freeAttractions, setFreeAttractions] = useState([]);
   const [sunTimesData, setSunTimesData] = useState(null);
@@ -200,6 +204,30 @@ export default function PlaceDetailPage() {
         })
         .catch(() => {});
 
+      // Fetch AI Day-by-Day Journey Itinerary
+      fetch(`/api/ai-itinerary?destination=${encodeURIComponent(data.place.name || slug)}&days=4`)
+        .then(r => r.json())
+        .then(it => {
+          if (it && Array.isArray(it.itinerary)) setItineraryData(it.itinerary);
+        })
+        .catch(() => {});
+
+      // Fetch Gastronomy & Culinary Guide
+      fetch(`/api/gastronomy?destination=${encodeURIComponent(slug)}`)
+        .then(r => r.json())
+        .then(gs => {
+          if (gs && gs.gastronomy) setGastronomyData(gs.gastronomy);
+        })
+        .catch(() => {});
+
+      // Fetch Visa Requirements
+      fetch(`/api/visa-requirements?destination=${encodeURIComponent(slug)}&passport=IN`)
+        .then(r => r.json())
+        .then(v => {
+          if (v && v.requirements) setVisaData(v.requirements);
+        })
+        .catch(() => {});
+
       // Fetch Real Explorer Photography
       fetch(`/api/external-images?query=${encodeURIComponent(data.place.name || slug)}&limit=6`)
         .then(r => r.json())
@@ -209,6 +237,7 @@ export default function PlaceDetailPage() {
           }
         })
         .catch(() => {});
+
 
 
       // Only request location services when this place actually has coordinates
@@ -276,10 +305,20 @@ export default function PlaceDetailPage() {
     }
   }, [slug]);
 
+  const handlePassportChange = async (passportCode) => {
+    setSelectedPassport(passportCode);
+    try {
+      const res = await fetch(`/api/visa-requirements?destination=${encodeURIComponent(slug)}&passport=${passportCode}`);
+      const data = await res.json();
+      if (data.requirements) setVisaData(data.requirements);
+    } catch {}
+  };
+
   useEffect(() => {
     fetchPlaceAndReviews();
     checkIsSaved();
   }, [fetchPlaceAndReviews, checkIsSaved]);
+
 
   // Dedicated effect for expense estimator so slider changes don't reload the page
   useEffect(() => {
@@ -1047,6 +1086,156 @@ export default function PlaceDetailPage() {
                 </div>
               </div>
             )}
+
+            {/* AI Day-by-Day Journey Itinerary */}
+            {itineraryData && itineraryData.length > 0 && (
+              <div className="bg-[#121214] border border-white/10 rounded-3xl p-6 sm:p-8 space-y-6 shadow-xl">
+                <div className="flex justify-between items-center border-b border-white/10 pb-4">
+                  <div>
+                    <span className="text-[10px] font-mono text-brand-gold uppercase tracking-widest block">
+                      ✨ AI Day-by-Day Journey Planner
+                    </span>
+                    <h3 className="font-serif text-2xl text-white mt-0.5">Curated Daily Itinerary</h3>
+                  </div>
+                  <span className="text-xs font-mono text-brand-gold bg-brand-gold/10 px-3 py-1 rounded-full border border-brand-gold/20">
+                    {itineraryData.length} Days Experience
+                  </span>
+                </div>
+
+                <div className="space-y-4">
+                  {itineraryData.map((d) => (
+                    <div key={d.day} className="p-5 rounded-2xl bg-white/5 border border-white/10 space-y-3">
+                      <div className="flex items-center gap-3">
+                        <span className="w-8 h-8 rounded-full bg-brand-gold text-black font-bold text-xs flex items-center justify-center font-mono">
+                          D{d.day}
+                        </span>
+                        <h4 className="font-serif text-lg text-white">{d.title}</h4>
+                      </div>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs pt-1">
+                        <div className="p-3 rounded-xl bg-white/[0.02] border border-white/5 space-y-1">
+                          <span className="text-brand-gold font-mono text-[10px] uppercase font-bold block">🌅 Morning</span>
+                          <p className="text-white/70">{d.morning}</p>
+                        </div>
+                        <div className="p-3 rounded-xl bg-white/[0.02] border border-white/5 space-y-1">
+                          <span className="text-brand-gold font-mono text-[10px] uppercase font-bold block">☀️ Afternoon</span>
+                          <p className="text-white/70">{d.afternoon}</p>
+                        </div>
+                        <div className="p-3 rounded-xl bg-white/[0.02] border border-white/5 space-y-1">
+                          <span className="text-brand-gold font-mono text-[10px] uppercase font-bold block">🌇 Golden Hour & Sunset</span>
+                          <p className="text-white/70">{d.sunset}</p>
+                        </div>
+                        <div className="p-3 rounded-xl bg-white/[0.02] border border-white/5 space-y-1">
+                          <span className="text-brand-gold font-mono text-[10px] uppercase font-bold block">🍷 Evening & Gastronomy</span>
+                          <p className="text-white/70">{d.dinner}</p>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Passport & Visa Entry Requirements Checker */}
+            {visaData && (
+              <div className="bg-[#121214] border border-white/10 rounded-3xl p-6 sm:p-8 space-y-5 shadow-xl">
+                <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-3 border-b border-white/10 pb-4">
+                  <div>
+                    <span className="text-[10px] font-mono text-brand-gold uppercase tracking-widest block">
+                      🛂 Passport & Visa Intelligence
+                    </span>
+                    <h3 className="font-serif text-2xl text-white mt-0.5">Entry Protocols & Requirements</h3>
+                  </div>
+
+                  <div className="flex items-center gap-2">
+                    <span className="text-[11px] font-mono text-white/50">My Passport:</span>
+                    <div className="flex gap-1 bg-white/5 p-1 rounded-full border border-white/10">
+                      {['IN', 'US', 'GB', 'EU'].map((code) => (
+                        <button
+                          key={code}
+                          type="button"
+                          onClick={() => handlePassportChange(code)}
+                          className={`px-3 py-1 rounded-full text-[10px] font-mono font-bold transition-all ${
+                            selectedPassport === code
+                              ? 'bg-white text-black shadow'
+                              : 'text-white/60 hover:text-white'
+                          }`}
+                        >
+                          {code === 'IN' ? '🇮🇳 IN' : code === 'US' ? '🇺🇸 US' : code === 'GB' ? '🇬🇧 UK' : '🇪🇺 EU'}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+
+                <div className="p-5 rounded-2xl bg-white/5 border border-white/10 space-y-3">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <div className="flex items-center gap-2">
+                      <span className="text-xl">📋</span>
+                      <span className="text-sm font-semibold text-white">{visaData.type}</span>
+                    </div>
+                    <div className="flex gap-2">
+                      <span className="px-3 py-1 rounded-full bg-green-500/20 text-green-300 text-xs font-mono font-bold border border-green-500/30">
+                        {visaData.badge}
+                      </span>
+                      <span className="px-3 py-1 rounded-full bg-white/10 text-white text-xs font-mono">
+                        Stay: {visaData.stay}
+                      </span>
+                    </div>
+                  </div>
+                  <p className="text-white/70 text-xs leading-relaxed font-mono pt-1">
+                    {visaData.note}
+                  </p>
+                </div>
+              </div>
+            )}
+
+            {/* Regional Gastronomy & Culinary Guide */}
+            {gastronomyData && (
+              <div className="bg-[#121214] border border-white/10 rounded-3xl p-6 sm:p-8 space-y-5 shadow-xl">
+                <div className="flex justify-between items-center border-b border-white/10 pb-4">
+                  <div>
+                    <span className="text-[10px] font-mono text-brand-gold uppercase tracking-widest block">
+                      🍽️ Culinary Heritage & Flavors
+                    </span>
+                    <h3 className="font-serif text-2xl text-white mt-0.5">{gastronomyData.destination} Gastronomy Guide</h3>
+                  </div>
+                  <span className="text-xs font-mono text-white/40">Signature Dishes</span>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  {gastronomyData.signatureDishes.map((dish, i) => (
+                    <div key={i} className="p-4 rounded-2xl bg-white/5 border border-white/10 space-y-1">
+                      <div className="flex items-center gap-2">
+                        <span className="text-base">🍲</span>
+                        <h5 className="font-semibold text-xs text-white">{dish.name}</h5>
+                      </div>
+                      <p className="text-white/60 text-xs leading-relaxed">{dish.description}</p>
+                    </div>
+                  ))}
+                </div>
+
+                {gastronomyData.drinks && gastronomyData.drinks.length > 0 && (
+                  <div className="p-4 rounded-2xl bg-white/[0.02] border border-white/5 space-y-2">
+                    <span className="text-[10px] font-mono text-brand-gold uppercase tracking-widest block">
+                      🍸 Signature Beverages & Spirits
+                    </span>
+                    <div className="flex flex-wrap gap-2">
+                      {gastronomyData.drinks.map((dr, i) => (
+                        <span key={i} className="px-3 py-1 rounded-full bg-white/5 text-white/80 text-xs font-mono border border-white/10">
+                          {dr}
+                        </span>
+                      ))}
+                    </div>
+                    {gastronomyData.dietaryNotes && (
+                      <p className="text-[11px] font-mono text-white/50 pt-1">
+                        🥗 <strong>Dietary Advice:</strong> {gastronomyData.dietaryNotes}
+                      </p>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
+
 
 
 
