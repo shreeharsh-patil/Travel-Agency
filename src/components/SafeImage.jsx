@@ -5,18 +5,46 @@ import React, { useEffect, useState } from 'react';
 // an app-owned editorial image instead of leaving a broken-image icon.
 const FALLBACK_IMAGE = '/images/tropical_beach.png';
 
-export default function SafeImage({ src, alt = '', fallbackSrc = FALLBACK_IMAGE, ...props }) {
+export default function SafeImage({
+  src,
+  alt = '',
+  fallbackSrc = FALLBACK_IMAGE,
+  priority = false,
+  loading,
+  decoding = 'async',
+  className = '',
+  ...props
+}) {
   const [currentSrc, setCurrentSrc] = useState(src || fallbackSrc);
+  const [isLoaded, setIsLoaded] = useState(false);
 
-  // Detail pages can stay mounted while React Router changes the place slug.
-  // Reset the image state so the new place is not left showing the old image.
   useEffect(() => {
     setCurrentSrc(src || fallbackSrc);
+    setIsLoaded(false);
   }, [src, fallbackSrc]);
 
   const handleError = () => {
-    if (currentSrc !== fallbackSrc) setCurrentSrc(fallbackSrc);
+    if (currentSrc !== fallbackSrc) {
+      setCurrentSrc(fallbackSrc);
+    }
   };
 
-  return <img {...props} src={currentSrc} alt={alt} onError={handleError} />;
+  const handleLoad = () => {
+    setIsLoaded(true);
+  };
+
+  const computedLoading = loading || (priority ? 'eager' : 'lazy');
+
+  return (
+    <img
+      {...props}
+      src={currentSrc}
+      alt={alt}
+      loading={computedLoading}
+      decoding={decoding}
+      onLoad={handleLoad}
+      onError={handleError}
+      className={`transition-opacity duration-300 ${isLoaded ? 'opacity-100' : 'opacity-85'} ${className}`}
+    />
+  );
 }

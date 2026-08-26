@@ -2,6 +2,7 @@ import express from 'express';
 import dotenv from 'dotenv';
 import helmet from 'helmet';
 import cors from 'cors';
+import compression from 'compression';
 import { routes } from './lib/router.js';
 import { rateLimit } from './lib/rateLimit.js';
 
@@ -9,7 +10,19 @@ dotenv.config();
 
 const app = express();
 const allowedOrigins = (process.env.CORS_ORIGINS || 'http://localhost:5173').split(',').map((origin) => origin.trim());
+
 app.disable('x-powered-by');
+app.set('etag', 'strong');
+
+// High performance response compression (gzip / brotli)
+app.use(compression({
+  threshold: 512,
+  filter: (req, res) => {
+    if (req.headers['x-no-compression']) return false;
+    return compression.filter(req, res);
+  }
+}));
+
 app.use(helmet({ contentSecurityPolicy: false }));
 app.use(cors({ origin: allowedOrigins, credentials: true }));
 app.use(express.json({ limit: '4mb' }));
@@ -19,7 +32,7 @@ app.get('/api/health', async (_req, res) => {
     const { connectToDatabase } = await import('./lib/db.js');
     const { db } = await connectToDatabase();
     await db.command({ ping: 1 });
-    res.json({ status: 'ok', database: 'mongodb', integrations: { weather: 'Open-Meteo', currency: 'Frankfurter', flightTracking: 'OpenSky (optional)' } });
+    res.json({ status: 'ok', database: 'mongodb', integrations: { weather: 'Open-Meteo', currency: 'Frankfurter', flightTracking: 'OpenSky' } });
   } catch {
     res.status(503).json({ status: 'degraded', database: 'unavailable' });
   }
@@ -33,6 +46,10 @@ for (const { method, path, handler } of routes) {
 
   app[method.toLowerCase()](path, async (req, res) => {
     try {
+      // Add caching header to read-only GET requests for instant client & edge caching
+      if (method === 'GET' && !path.startsWith('/api/auth/')) {
+        res.setHeader('Cache-Control', 'public, max-age=60, stale-while-revalidate=120');
+      }
       await wrapped(req, res);
     } catch (err) {
       console.error(`[api] ${method} ${path} failed:`, err);

@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate, Link, useSearchParams } from 'react-router-dom';
 import { PlannerService } from '../services/trips/plannerService';
 import CurrencyPrice from './CurrencyPrice';
 import { useToast } from '../contexts/ToastContext';
@@ -8,10 +8,13 @@ import { useToast } from '../contexts/ToastContext';
 export default function PlanTripPage() {
   const navigate = useNavigate();
   const toast = useToast();
+  const [searchParams] = useSearchParams();
+  const initialDest = searchParams.get('destination') || searchParams.get('place') || 'goa';
+
   const [step, setStep] = useState(1);
 
   const [wizardData, setWizardData] = useState({
-    destination: 'goa',
+    destination: initialDest,
     durationDays: 3,
     travelers: '2 Guests',
     budgetINR: 50000,
@@ -22,6 +25,13 @@ export default function PlanTripPage() {
     transportation: 'Chauffeur SUV',
     notes: ''
   });
+
+  useEffect(() => {
+    const dest = searchParams.get('destination') || searchParams.get('place');
+    if (dest) {
+      setWizardData((prev) => ({ ...prev, destination: dest }));
+    }
+  }, [searchParams]);
 
   const [generating, setGenerating] = useState(false);
   const [generatedItinerary, setGeneratedItinerary] = useState(null);

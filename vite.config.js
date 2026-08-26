@@ -1,7 +1,6 @@
 /* global process */
-import { defineConfig } from 'vite'
-import react from '@vitejs/plugin-react'
-
+import { defineConfig } from 'vite';
+import react from '@vitejs/plugin-react';
 
 // https://vite.dev/config/
 export default defineConfig({
@@ -15,14 +14,19 @@ export default defineConfig({
     }
   },
   build: {
+    target: 'es2020',
+    cssCodeSplit: true,
+    minify: 'esbuild',
+    chunkSizeWarningLimit: 1000,
     rollupOptions: {
       output: {
         manualChunks: {
-          // Stable vendor chunks for better caching and smaller initial loads.
+          // Stable vendor chunks for maximum browser cache reuse
           'react-vendor': ['react', 'react-dom', 'react-router-dom'],
           'motion': ['framer-motion'],
+          'scroll': ['@studio-freight/react-lenis']
         }
       }
     }
   }
-})
+});

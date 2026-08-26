@@ -75,21 +75,35 @@ export default function Header() {
         return () => window.removeEventListener('favorites-updated', handleFavoritesUpdate);
     }, [checkFavorites]);
 
-    // Handle scroll and scroll progress
+    // Handle scroll and scroll progress with RAF throttling
     useEffect(() => {
-        const handleScroll = () => {
-            const currentScrollY = window.scrollY;
-            setScrolled(currentScrollY > 30);
+        let rafId = null;
+        let lastScrolledState = false;
 
-            const docHeight = document.documentElement.scrollHeight - window.innerHeight;
-            if (docHeight > 0) {
-                setScrollProgress(Math.min(100, Math.max(0, (currentScrollY / docHeight) * 100)));
-            }
+        const handleScroll = () => {
+            if (rafId) return;
+            rafId = window.requestAnimationFrame(() => {
+                const currentScrollY = window.scrollY;
+                const isNowScrolled = currentScrollY > 30;
+                if (isNowScrolled !== lastScrolledState) {
+                    lastScrolledState = isNowScrolled;
+                    setScrolled(isNowScrolled);
+                }
+
+                const docHeight = document.documentElement.scrollHeight - window.innerHeight;
+                if (docHeight > 0) {
+                    setScrollProgress(Math.min(100, Math.max(0, (currentScrollY / docHeight) * 100)));
+                }
+                rafId = null;
+            });
         };
 
         handleScroll();
         window.addEventListener('scroll', handleScroll, { passive: true });
-        return () => window.removeEventListener('scroll', handleScroll);
+        return () => {
+            window.removeEventListener('scroll', handleScroll);
+            if (rafId) window.cancelAnimationFrame(rafId);
+        };
     }, []);
 
     // Global keyboard shortcut for Search (⌘K / Ctrl+K) and Escape key
