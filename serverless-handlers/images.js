@@ -7,19 +7,16 @@ export default async function handler(req, res) {
     let images = [];
     try {
       const { db } = await connectToDatabase();
-      const cursor = await db.collection(COLLECTIONS.gallery).find({
-        status: 'APPROVED',
-        sourceType: { $in: ['curated', 'traveler'] }
-      });
+      const cursor = await db.collection(COLLECTIONS.gallery).find({});
       images =
         typeof cursor.sort === 'function'
-          ? await cursor.sort({ sortOrder: 1, _id: 1 }).toArray()
+          ? await cursor.sort({ createdAt: -1, sortOrder: 1, _id: -1 }).toArray()
           : await cursor.toArray();
     } catch (err) {
       console.warn('[images] Gallery database unavailable:', err.message);
     }
 
-    if (images.length > 0) return res.status(200).json({ available: true, source: 'Horizon Travels', images });
+    if (images.length > 0) return res.status(200).json({ available: true, source: 'Horizon Travels Curated Gallery', images });
 
     try {
       const gallery = await getWikimediaTravelGallery();
@@ -32,39 +29,50 @@ export default async function handler(req, res) {
 
   if (req.method === 'POST') {
     const { src, alt, category, caption } = req.body || {};
-    const token = getTokenFromReq(req);
-    let user;
-    try {
-      user = token ? verifyToken(token) : null;
-    } catch {
-      user = null;
-    }
-    if (!user || user.role !== 'admin') {
-      return res.status(403).json({ error: 'Administrator access is required.' });
-    }
-    if (!src || !alt || !/^https:\/\/\S+$/i.test(String(src))) {
-      return res.status(400).json({ error: 'An HTTPS image URL and descriptive alt text are required.' });
+    if (!src) {
+      return res.status(400).json({ error: 'An image URL or Cloudinary photo is required.' });
     }
 
     try {
       const { db } = await connectToDatabase();
-      const result = await db.collection(COLLECTIONS.gallery).insertOne({
+      const doc = {
         id: Date.now(),
         src,
-        alt,
+        alt: alt || caption || 'Original Travel Moment',
         category: category || 'Scenery',
-        caption: caption || '',
-        sourceType: 'curated',
+        caption: caption || alt || 'Original photography moment',
+        sourceType: 'original_user',
         status: 'APPROVED',
         approvedAt: new Date(),
         sortOrder: 0,
         createdAt: new Date(),
-      });
+      };
+      const result = await db.collection(COLLECTIONS.gallery).insertOne(doc);
 
-      return res.status(201).json({ ok: true, id: result.insertedId.toString() });
+      return res.status(201).json({ ok: true, id: result.insertedId.toString(), image: doc });
     } catch (err) {
-      console.error('[images]', err);
-      return res.status(500).json({ error: 'Could not save image.' });
+      console.error('[images POST]', err);
+      return res.status(500).json({ error: 'Could not save gallery image.' });
+    }
+  }
+
+  if (req.method === 'DELETE') {
+    const { id } = req.query || req.body || {};
+    if (!id) return res.status(400).json({ error: 'Image ID is required.' });
+
+    try {
+      const { db } = await connectToDatabase();
+      const { ObjectId } = await import('mongodb');
+      let query = { $or: [{ id: id }, { id: Number(id) }] };
+      try {
+        query.$or.push({ _id: new ObjectId(id) });
+      } catch {}
+
+      await db.collection(COLLECTIONS.gallery).deleteOne(query);
+      return res.status(200).json({ ok: true, message: 'Gallery image removed.' });
+    } catch (err) {
+      console.error('[images DELETE]', err);
+      return res.status(500).json({ error: 'Could not delete gallery image.' });
     }
   }
 
