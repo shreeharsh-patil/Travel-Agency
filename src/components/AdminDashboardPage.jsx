@@ -37,10 +37,6 @@ export default function AdminDashboardPage() {
   const [placeUploadError, setPlaceUploadError] = useState(null);
   const [placeSaving, setPlaceSaving] = useState(false);
 
-  useEffect(() => {
-    fetchAdminData();
-  }, [fetchAdminData]);
-
   const notify = (msg) => {
     setActionMsg(msg);
     setTimeout(() => setActionMsg(null), 3000);
@@ -90,6 +86,10 @@ export default function AdminDashboardPage() {
       setLoading(false);
     }
   }, []);
+
+  useEffect(() => {
+    fetchAdminData();
+  }, [fetchAdminData]);
 
   const handlePlaceStatus = async (placeId, status) => {
     try {

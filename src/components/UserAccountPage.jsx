@@ -28,12 +28,6 @@ export default function UserAccountPage() {
     budgetINR: 75000
   });
 
-  useEffect(() => {
-    loadProfile();
-    loadServerTripCount();
-    loadBookings();
-  }, []);
-
   const loadProfile = async () => {
     try {
       const res = await fetch('/api/auth/me');
@@ -42,12 +36,12 @@ export default function UserAccountPage() {
         const u = data.user;
         setUser(u);
         setProfileForm({
-          name: u.name || '',
-          phone: u.phone || '',
-          avatar: u.avatar || '',
-          interests: Array.isArray(u.preferences?.interests) ? u.preferences.interests : [],
-          travelStyle: u.preferences?.travelStyle || 'Luxury',
-          budgetINR: u.preferences?.budgetINR || 75000
+          name: u?.name || '',
+          phone: u?.phone || '',
+          avatar: u?.avatar || '',
+          interests: Array.isArray(u?.preferences?.interests) ? u.preferences.interests : [],
+          travelStyle: u?.preferences?.travelStyle || 'Luxury',
+          budgetINR: u?.preferences?.budgetINR || 75000
         });
       }
     } catch (err) {
@@ -75,6 +69,12 @@ export default function UserAccountPage() {
       console.error('Load trips count error:', err);
     }
   };
+
+  useEffect(() => {
+    loadProfile();
+    loadServerTripCount();
+    loadBookings();
+  }, []);
 
   const toggleInterest = (interest) => {
     setProfileForm((prev) => ({

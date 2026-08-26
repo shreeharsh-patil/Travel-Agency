@@ -11,10 +11,6 @@ export default function FavoritesPage() {
   const [loading, setLoading] = useState(true);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
 
-  useEffect(() => {
-    fetchFavorites();
-  }, []);
-
   const fetchFavorites = async () => {
     setLoading(true);
     try {
@@ -44,6 +40,10 @@ export default function FavoritesPage() {
       setLoading(false);
     }
   };
+
+  useEffect(() => {
+    fetchFavorites();
+  }, []);
 
   const removeFavorite = async (placeId) => {
     try {

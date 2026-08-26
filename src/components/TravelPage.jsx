@@ -35,15 +35,6 @@ export default function TravelPage() {
   const [favorites, setFavorites] = useState([]);
   const [loading, setLoading] = useState(false);
 
-  useEffect(() => {
-    fetchPublicPlaces();
-    fetchUserFavorites();
-  }, []);
-
-  useEffect(() => {
-    setSearchQuery(searchParams.get('search') || '');
-  }, [searchParams]);
-
   const fetchPublicPlaces = async () => {
     setLoading(true);
     try {
@@ -67,13 +58,22 @@ export default function TravelPage() {
       if (res.ok) {
         const data = await res.json();
         if (Array.isArray(data.favorites)) {
-          setFavorites(data.favorites.map(f => f.place_id || f.id || f));
+          setFavorites(data.favorites.map((f) => f.place_id || f.id || f));
         }
       }
-    } catch {
-      // User may not be logged in
+    } catch (err) {
+      console.error('Fetch user favorites error:', err);
     }
   };
+
+  useEffect(() => {
+    fetchPublicPlaces();
+    fetchUserFavorites();
+  }, []);
+
+  useEffect(() => {
+    setSearchQuery(searchParams.get('search') || '');
+  }, [searchParams]);
 
   const toggleFavorite = async (dest, e) => {
     e.preventDefault();
