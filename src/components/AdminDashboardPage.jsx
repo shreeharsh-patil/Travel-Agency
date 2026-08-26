@@ -1,6 +1,31 @@
 import React, { useState, useEffect, useCallback } from 'react';
 
 const EMPTY_POST = { title: '', category: 'Journal', excerpt: '', content: '', image: '', published: true };
+const EMPTY_NEW_PLACE = {
+  name: '',
+  country: '',
+  city: '',
+  state_region: '',
+  category: 'Luxury',
+  priceFrom: 45000,
+  description: '',
+  image: '',
+  gallery: [],
+  amenities: ['wifi', 'pool', 'ac', 'parking', 'kitchen', 'view'],
+  website: '',
+  location_address: ''
+};
+
+const ALL_AMENITY_OPTIONS = [
+  { id: 'wifi', name: 'High-Speed WiFi', icon: '📶' },
+  { id: 'pool', name: 'Infinity Pool', icon: '🏊‍♂️' },
+  { id: 'ac', name: 'Climate Control AC', icon: '❄️' },
+  { id: 'parking', name: 'Valet Parking', icon: '🚗' },
+  { id: 'kitchen', name: 'Gourmet Kitchen', icon: '🍳' },
+  { id: 'view', name: 'Ocean/Mountain View', icon: '🌅' },
+  { id: 'spa', name: 'Private Spa & Sauna', icon: '🧘' },
+  { id: 'chef', name: 'Private Michelin Chef', icon: '👨‍🍳' }
+];
 
 export default function AdminDashboardPage() {
   const [stats, setStats] = useState({
@@ -36,6 +61,13 @@ export default function AdminDashboardPage() {
   const [placeUploading, setPlaceUploading] = useState(false);
   const [placeUploadError, setPlaceUploadError] = useState(null);
   const [placeSaving, setPlaceSaving] = useState(false);
+
+  // Add New Sanctuary Modal state
+  const [showAddPlaceModal, setShowAddPlaceModal] = useState(false);
+  const [newPlaceForm, setNewPlaceForm] = useState(EMPTY_NEW_PLACE);
+  const [newPlaceSaving, setNewPlaceSaving] = useState(false);
+  const [newPlaceUploading, setNewPlaceUploading] = useState(false);
+  const [newPlaceUploadError, setNewPlaceUploadError] = useState(null);
 
   const notify = (msg) => {
     setActionMsg(msg);
@@ -357,6 +389,132 @@ export default function AdminDashboardPage() {
     }
   };
 
+  // ---- New Sanctuary Creation Handlers ----
+  const startAddNewPlace = () => {
+    setNewPlaceForm(EMPTY_NEW_PLACE);
+    setNewPlaceUploadError(null);
+    setShowAddPlaceModal(true);
+  };
+
+  const handleCreateNewPlace = async (e) => {
+    e.preventDefault();
+    if (!newPlaceForm.name || !newPlaceForm.country || !newPlaceForm.description) {
+      notify('Please fill in place name, country and description.');
+      return;
+    }
+    setNewPlaceSaving(true);
+    try {
+      const res = await fetch('/api/places', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          ...newPlaceForm,
+          status: 'APPROVED'
+        })
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Failed to create sanctuary.');
+
+      notify(`Sanctuary "${newPlaceForm.name}" created and published to catalog! 🎉`);
+      setShowAddPlaceModal(false);
+      setNewPlaceForm(EMPTY_NEW_PLACE);
+      fetchAdminData();
+    } catch (err) {
+      console.error('Create place error:', err);
+      notify(err.message || 'Could not create sanctuary.');
+    } finally {
+      setNewPlaceSaving(false);
+    }
+  };
+
+  const handleNewPlaceFileUpload = async (e) => {
+    const files = Array.from(e.target.files || []);
+    if (files.length === 0) return;
+    setNewPlaceUploading(true);
+    setNewPlaceUploadError(null);
+
+    try {
+      const uploadedUrls = [];
+      for (const file of files) {
+        const reader = new FileReader();
+        const base64Promise = new Promise((resolve, reject) => {
+          reader.onload = () => resolve(reader.result);
+          reader.onerror = reject;
+        });
+        reader.readAsDataURL(file);
+        const base64Data = await base64Promise;
+
+        const res = await fetch('/api/upload', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ image: base64Data, folder: 'horizon_places' })
+        });
+
+        const data = await res.json();
+        if (res.ok && data.url) {
+          uploadedUrls.push(data.url);
+        } else {
+          throw new Error(data.error || 'Failed to upload photo.');
+        }
+      }
+
+      if (uploadedUrls.length > 0) {
+        setNewPlaceForm((prev) => {
+          const newGallery = [...(prev.gallery || []), ...uploadedUrls].slice(0, 8);
+          return {
+            ...prev,
+            image: prev.image || uploadedUrls[0],
+            gallery: newGallery
+          };
+        });
+        notify(`Uploaded ${uploadedUrls.length} original photo(s)!`);
+      }
+    } catch (err) {
+      console.error('New place photo upload error:', err);
+      setNewPlaceUploadError(err.message || 'Image upload failed.');
+    } finally {
+      setNewPlaceUploading(false);
+      e.target.value = '';
+    }
+  };
+
+  const handleAutoFetchNewPlacePhotos = async () => {
+    if (!newPlaceForm?.name) {
+      notify('Please enter a sanctuary name or city first.');
+      return;
+    }
+    setNewPlaceUploading(true);
+    setNewPlaceUploadError(null);
+    try {
+      const res = await fetch(`/api/external-images?query=${encodeURIComponent(newPlaceForm.name + ' ' + (newPlaceForm.country || ''))}&limit=6`);
+      const data = await res.json();
+      if (res.ok && Array.isArray(data.images) && data.images.length > 0) {
+        const fetchedUrls = data.images.map((img) => img.src);
+        setNewPlaceForm((prev) => ({
+          ...prev,
+          image: prev.image || fetchedUrls[0],
+          gallery: Array.from(new Set([...(prev.gallery || []), ...fetchedUrls])).slice(0, 8)
+        }));
+        notify(`Auto-fetched ${fetchedUrls.length} original destination photos!`);
+      } else {
+        throw new Error('No open photos found for this destination name.');
+      }
+    } catch (err) {
+      console.error('Auto fetch new place photos error:', err);
+      setNewPlaceUploadError(err.message || 'Auto-fetch failed.');
+    } finally {
+      setNewPlaceUploading(false);
+    }
+  };
+
+  const toggleNewPlaceAmenity = (id) => {
+    setNewPlaceForm((prev) => {
+      const current = prev.amenities || [];
+      const updated = current.includes(id) ? current.filter((a) => a !== id) : [...current, id];
+      return { ...prev, amenities: updated };
+    });
+  };
+
   const statCards = [
     { label: 'Total Places', val: stats.totalPlaces, icon: '🏝️' },
     { label: 'Pending Places', val: stats.pendingPlaces, icon: '⏳', highlight: stats.pendingPlaces > 0 },
@@ -515,9 +673,19 @@ export default function AdminDashboardPage() {
             )}
 
             <div className="pt-8 space-y-4">
-              <div className="flex justify-between items-center">
-                <h3 className="font-serif text-2xl text-white">All Public & Approved Places ({allPlacesList.length})</h3>
-                <span className="text-xs font-mono text-white/50">Click "Edit Photos" on any sanctuary to upload original camera pictures</span>
+              <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-4">
+                <div>
+                  <h3 className="font-serif text-2xl text-white">All Public & Approved Places ({allPlacesList.length})</h3>
+                  <span className="text-xs font-mono text-white/50">Manage sanctuary catalog and high-resolution media</span>
+                </div>
+                <button
+                  type="button"
+                  onClick={startAddNewPlace}
+                  className="px-5 py-2.5 rounded-full bg-brand-gold text-black text-xs font-bold uppercase tracking-wider hover:bg-white transition-all shadow-lg flex items-center gap-2 self-start sm:self-auto"
+                >
+                  <span>✨</span>
+                  <span>+ Add New Sanctuary</span>
+                </button>
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
                 {allPlacesList.map((p) => {
@@ -578,33 +746,40 @@ export default function AdminDashboardPage() {
 
             {reviewsList.length === 0 ? (
               <div className="p-10 rounded-3xl bg-[#121214] border border-white/10 text-center text-white/50">
-                No reviews found.
+                <span className="text-3xl block mb-2">✍️</span>
+                <p className="text-xs font-mono uppercase tracking-widest">No reviews found.</p>
               </div>
             ) : (
               <div className="space-y-4">
                 {reviewsList.map((rev) => (
-                  <div key={rev._id} className="p-5 rounded-2xl bg-[#121214] border border-white/10 flex flex-col md:flex-row justify-between gap-4">
+                  <div key={rev._id} className="p-6 rounded-3xl bg-[#121214] border border-white/10 flex flex-col md:flex-row gap-4 justify-between items-start">
                     <div className="space-y-2 flex-1">
-                      <div className="flex items-center gap-3">
-                        <span className="text-brand-gold font-mono font-bold">★ {rev.rating}</span>
-                        <span className="text-white font-semibold text-sm">{rev.title}</span>
-                        <span className="text-[10px] font-mono text-white/40">By {rev.user_name || 'User'} for {rev.place_id}</span>
+                      <div className="flex items-center gap-2">
+                        <span className="text-yellow-400 text-sm">{'★'.repeat(rev.rating || 5)}</span>
+                        <span className="text-[10px] font-mono text-brand-gold uppercase">{rev.place_id}</span>
+                        <span className={`text-[10px] font-mono px-2 py-0.5 rounded-full ${
+                          rev.status === 'APPROVED' ? 'bg-green-500/20 text-green-300' : 'bg-yellow-500/20 text-yellow-300'
+                        }`}>
+                          {rev.status}
+                        </span>
                       </div>
-                      <p className="text-white/80 text-xs">{rev.comment}</p>
+                      <h5 className="font-serif text-lg text-white">{rev.title}</h5>
+                      <p className="text-xs text-white/70">{rev.comment}</p>
+                      <p className="text-[10px] font-mono text-white/40">By {rev.user_name || 'Guest'} on {new Date(rev.created_at).toLocaleDateString()}</p>
                     </div>
 
-                    <div className="flex items-center gap-2">
+                    <div className="flex gap-2">
                       {rev.status !== 'APPROVED' && (
                         <button
                           onClick={() => handleReviewStatus(rev._id, 'APPROVED')}
-                          className="px-3 py-1.5 rounded-lg bg-green-500 text-black text-xs font-bold uppercase"
+                          className="py-1.5 px-3 rounded-lg bg-green-500 text-black text-xs font-bold uppercase hover:bg-green-400"
                         >
                           Approve
                         </button>
                       )}
                       <button
                         onClick={() => handleDeleteReview(rev._id)}
-                        className="px-3 py-1.5 rounded-lg bg-red-500/20 text-red-300 text-xs font-mono hover:bg-red-500 hover:text-white"
+                        className="py-1.5 px-3 rounded-lg bg-red-500/20 text-red-300 border border-red-500/40 text-xs font-mono hover:bg-red-500 hover:text-white"
                       >
                         Delete
                       </button>
@@ -619,174 +794,204 @@ export default function AdminDashboardPage() {
         {/* BLOG CMS TAB */}
         {activeTab === 'blog' && (
           <div className="space-y-6">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-4">
               <div>
-                <h3 className="font-serif text-2xl text-white">Journal Articles ({blogPosts.length})</h3>
-                <p className="text-white/50 text-xs mt-1">Create, edit, and publish stories for The Journal.</p>
+                <h3 className="font-serif text-2xl text-white">Journal & Editorial CMS ({blogPosts.length})</h3>
+                <span className="text-xs font-mono text-white/50">Publish articles, travel guides, and editorial insights</span>
               </div>
               <button
+                type="button"
                 onClick={startNewPost}
-                className="px-6 py-2.5 rounded-full bg-brand-gold text-black text-xs font-bold uppercase tracking-widest hover:bg-white transition-colors"
+                className="px-5 py-2.5 rounded-full bg-brand-gold text-black text-xs font-bold uppercase tracking-wider hover:bg-white transition-all shadow-lg flex items-center gap-2 self-start sm:self-auto"
               >
-                + New Article
+                <span>✍️</span>
+                <span>+ New Article</span>
               </button>
             </div>
 
-            {/* Create / Edit form */}
+            {/* Inline Post Editor Modal */}
             {showPostForm && (
-              <form onSubmit={handleSavePost} className="p-6 sm:p-8 rounded-3xl bg-[#121214] border border-brand-gold/30 space-y-5">
-                <h4 className="font-serif text-xl text-white">{editingPostId ? '✏️ Edit Article' : '✍️ New Article'}</h4>
+              <form
+                onSubmit={handleSavePost}
+                className="p-6 sm:p-8 rounded-3xl bg-[#121214] border border-brand-gold/40 space-y-5"
+              >
+                <div className="flex justify-between items-center border-b border-white/10 pb-4">
+                  <h4 className="font-serif text-xl text-white">
+                    {editingPostId ? 'Edit Article' : 'Draft New Journal Article'}
+                  </h4>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowPostForm(false);
+                      setEditingPostId(null);
+                    }}
+                    className="text-xs font-mono text-white/50 hover:text-white"
+                  >
+                    Cancel ✕
+                  </button>
+                </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-                  <div className="space-y-1.5 md:col-span-2">
-                    <label className="text-xs uppercase font-mono text-white/60">Title *</label>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div className="space-y-1.5">
+                    <label className="text-xs uppercase font-mono text-white/60">Title</label>
                     <input
                       type="text"
                       required
+                      placeholder="e.g. The Secrets of Kyoto Zen Gardens"
                       value={postForm.title}
                       onChange={(e) => setPostForm({ ...postForm, title: e.target.value })}
-                      placeholder="The Ultimate Guide to..."
                       className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-white text-sm focus:border-brand-gold focus:outline-none"
                     />
                   </div>
                   <div className="space-y-1.5">
                     <label className="text-xs uppercase font-mono text-white/60">Category</label>
-                    <input
-                      type="text"
+                    <select
                       value={postForm.category}
                       onChange={(e) => setPostForm({ ...postForm, category: e.target.value })}
-                      className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-white text-sm focus:border-brand-gold focus:outline-none"
-                    />
-                  </div>
-                  <div className="space-y-1.5">
-                    <label className="text-xs uppercase font-mono text-white/60">Cover Image URL</label>
-                    <input
-                      type="url"
-                      value={postForm.image}
-                      onChange={(e) => setPostForm({ ...postForm, image: e.target.value })}
-                      placeholder="/images/private_jet.png or https://..."
-                      className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-white text-sm focus:border-brand-gold focus:outline-none"
-                    />
-                  </div>
-                  <div className="space-y-1.5 md:col-span-2">
-                    <label className="text-xs uppercase font-mono text-white/60">Excerpt</label>
-                    <input
-                      type="text"
-                      value={postForm.excerpt}
-                      onChange={(e) => setPostForm({ ...postForm, excerpt: e.target.value })}
-                      placeholder="Short summary shown on the journal grid"
-                      className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-white text-sm focus:border-brand-gold focus:outline-none"
-                    />
-                  </div>
-                  <div className="space-y-1.5 md:col-span-2">
-                    <label className="text-xs uppercase font-mono text-white/60">Content *</label>
-                    <textarea
-                      rows="8"
-                      required
-                      value={postForm.content}
-                      onChange={(e) => setPostForm({ ...postForm, content: e.target.value })}
-                      placeholder="Write the full story... (separate paragraphs with blank lines)"
-                      className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-white text-sm focus:border-brand-gold focus:outline-none"
-                    />
+                      className="w-full bg-[#1c1c1f] border border-white/10 rounded-xl px-4 py-2.5 text-white text-sm focus:border-brand-gold focus:outline-none"
+                    >
+                      {['Journal', 'Guide', 'Culture', 'Luxury', 'Gastronomy', 'Wellness'].map((c) => (
+                        <option key={c} value={c}>
+                          {c}
+                        </option>
+                      ))}
+                    </select>
                   </div>
                 </div>
 
-                <label className="flex items-center gap-3 text-xs font-mono text-white/70 cursor-pointer">
+                <div className="space-y-1.5">
+                  <label className="text-xs uppercase font-mono text-white/60">Cover Image URL</label>
                   <input
-                    type="checkbox"
-                    checked={postForm.published}
-                    onChange={(e) => setPostForm({ ...postForm, published: e.target.checked })}
-                    className="accent-brand-gold w-4 h-4"
+                    type="url"
+                    placeholder="https://images.unsplash.com/..."
+                    value={postForm.image}
+                    onChange={(e) => setPostForm({ ...postForm, image: e.target.value })}
+                    className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-white text-sm focus:border-brand-gold focus:outline-none"
                   />
-                  Published (visible on The Journal)
-                </label>
+                </div>
 
-                <div className="flex flex-wrap justify-end gap-3 pt-2">
-                  <button
-                    type="button"
-                    onClick={() => setShowPostForm(false)}
-                    className="px-6 py-2.5 rounded-full bg-white/10 text-white text-xs font-mono hover:bg-white/20 transition-colors"
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    type="submit"
-                    disabled={postSaving}
-                    className="px-8 py-2.5 rounded-full bg-brand-gold text-black text-xs font-bold uppercase tracking-widest hover:bg-white transition-colors disabled:opacity-50"
-                  >
-                    {postSaving ? 'Saving...' : editingPostId ? 'Save Changes' : 'Publish Article'}
-                  </button>
+                <div className="space-y-1.5">
+                  <label className="text-xs uppercase font-mono text-white/60">Excerpt / Subtitle</label>
+                  <input
+                    type="text"
+                    placeholder="A brief 1-sentence teaser..."
+                    value={postForm.excerpt}
+                    onChange={(e) => setPostForm({ ...postForm, excerpt: e.target.value })}
+                    className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-white text-sm focus:border-brand-gold focus:outline-none"
+                  />
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="text-xs uppercase font-mono text-white/60">Content (Markdown supported)</label>
+                  <textarea
+                    rows="6"
+                    required
+                    placeholder="Write your article..."
+                    value={postForm.content}
+                    onChange={(e) => setPostForm({ ...postForm, content: e.target.value })}
+                    className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-white text-sm focus:border-brand-gold focus:outline-none font-mono"
+                  />
+                </div>
+
+                <div className="flex items-center justify-between pt-2">
+                  <label className="flex items-center gap-2 cursor-pointer text-xs text-white/70 font-mono">
+                    <input
+                      type="checkbox"
+                      checked={postForm.published}
+                      onChange={(e) => setPostForm({ ...postForm, published: e.target.checked })}
+                      className="accent-brand-gold rounded"
+                    />
+                    <span>Publish live immediately</span>
+                  </label>
+
+                  <div className="flex gap-3">
+                    <button
+                      type="button"
+                      onClick={() => setShowPostForm(false)}
+                      className="px-5 py-2 rounded-full bg-white/10 text-white text-xs font-mono hover:bg-white/20"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="submit"
+                      disabled={postSaving}
+                      className="px-6 py-2 rounded-full bg-brand-gold text-black text-xs font-bold uppercase tracking-widest hover:bg-white disabled:opacity-50"
+                    >
+                      {postSaving ? 'Saving...' : editingPostId ? 'Update Article' : 'Publish Article'}
+                    </button>
+                  </div>
                 </div>
               </form>
             )}
 
-            {/* Posts list */}
-            {blogPosts.length === 0 ? (
-              <div className="p-10 rounded-3xl bg-[#121214] border border-white/10 text-center text-white/50">
-                No articles yet. Write your first story!
-              </div>
-            ) : (
-              <div className="space-y-4">
-                {blogPosts.map((post) => (
-                  <div key={post._id} className="p-5 rounded-2xl bg-[#121214] border border-white/10 flex flex-col md:flex-row justify-between gap-4">
-                    <div className="flex gap-4 items-start flex-1 min-w-0">
-                      <img src={post.image} alt={post.title} className="w-16 h-16 rounded-xl object-cover shrink-0" />
-                      <div className="space-y-1 min-w-0">
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <span className="text-[10px] font-mono text-white/40">
-                            {post.created_at ? new Date(post.created_at).toLocaleDateString() : ''}
-                          </span>
-                          <span className={`text-[9px] font-mono px-2 py-0.5 rounded-full uppercase ${
-                            post.published !== false
-                              ? 'bg-green-500/15 text-green-300'
-                              : 'bg-yellow-500/15 text-yellow-300'
-                          }`}>
-                            {post.published !== false ? 'Published' : 'Draft'}
-                          </span>
-                        </div>
-                        <h5 className="font-serif text-lg text-white truncate">{post.title}</h5>
-                        <p className="text-white/50 text-xs line-clamp-1">{post.excerpt || post.content}</p>
-                      </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {blogPosts.map((post) => (
+                <div
+                  key={post._id}
+                  className="p-5 rounded-3xl bg-[#121214] border border-white/10 hover:border-brand-gold/30 transition-all flex flex-col justify-between gap-4"
+                >
+                  <div className="space-y-2">
+                    <div className="flex justify-between items-center">
+                      <span className="px-2.5 py-0.5 rounded-full bg-brand-gold/20 text-brand-gold text-[10px] font-mono uppercase">
+                        {post.category || 'Journal'}
+                      </span>
+                      <span
+                        className={`text-[10px] font-mono px-2 py-0.5 rounded-full ${
+                          post.published !== false
+                            ? 'bg-green-500/20 text-green-300'
+                            : 'bg-white/10 text-white/50'
+                        }`}
+                      >
+                        {post.published !== false ? 'PUBLISHED' : 'DRAFT'}
+                      </span>
                     </div>
+                    <h4 className="font-serif text-xl text-white">{post.title}</h4>
+                    <p className="text-xs text-white/60 line-clamp-2">{post.excerpt || post.content}</p>
+                  </div>
 
-                    <div className="flex items-center gap-2 shrink-0">
+                  <div className="flex justify-between items-center pt-3 border-t border-white/10">
+                    <span className="text-[10px] font-mono text-white/40">
+                      {post.createdAt ? new Date(post.createdAt).toLocaleDateString() : 'Recent'}
+                    </span>
+                    <div className="flex gap-2">
                       <button
                         onClick={() => startEditPost(post)}
-                        className="px-4 py-2 rounded-lg bg-white/10 text-white text-xs font-mono hover:bg-white hover:text-black transition-colors"
+                        className="px-3 py-1 rounded-lg bg-white/10 text-white text-xs font-mono hover:bg-white/20"
                       >
-                        ✏️ Edit
+                        Edit
                       </button>
                       <button
                         onClick={() => handleDeletePost(post._id)}
-                        className="px-4 py-2 rounded-lg bg-red-500/20 text-red-300 text-xs font-mono hover:bg-red-500 hover:text-white transition-colors"
+                        className="px-3 py-1 rounded-lg bg-red-500/20 text-red-300 hover:bg-red-500 hover:text-white text-xs font-mono"
                       >
                         Delete
                       </button>
                     </div>
                   </div>
-                ))}
-              </div>
-            )}
+                </div>
+              ))}
+            </div>
           </div>
         )}
 
         {/* NEWSLETTER TAB */}
         {activeTab === 'newsletter' && (
           <div className="space-y-6">
-            <h3 className="font-serif text-2xl text-white">Newsletter Subscribers ({subscribers.length})</h3>
+            <h3 className="font-serif text-2xl text-white">Subscribers List ({subscribers.length})</h3>
 
             {subscribers.length === 0 ? (
               <div className="p-10 rounded-3xl bg-[#121214] border border-white/10 text-center text-white/50">
-                No subscribers yet. The footer signup will grow this list.
+                <span className="text-3xl block mb-2">✉️</span>
+                <p className="text-xs font-mono uppercase tracking-widest">No subscribers yet.</p>
               </div>
             ) : (
               <div className="bg-[#121214] border border-white/10 rounded-3xl overflow-hidden">
                 <div className="overflow-x-auto">
-                  <table className="w-full text-left text-sm">
+                  <table className="w-full text-left">
                     <thead>
-                      <tr className="border-b border-white/10 text-[10px] font-mono text-white/40 uppercase tracking-widest">
-                        <th className="px-6 py-4">Email</th>
-                        <th className="px-6 py-4">Subscribed</th>
+                      <tr className="border-b border-white/10 bg-white/5 text-[10px] font-mono uppercase tracking-widest text-white/60">
+                        <th className="px-6 py-4">Subscriber Email</th>
+                        <th className="px-6 py-4">Subscribed Date</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -803,6 +1008,205 @@ export default function AdminDashboardPage() {
                 </div>
               </div>
             )}
+          </div>
+        )}
+
+        {/* ADD NEW SANCTUARY MODAL */}
+        {showAddPlaceModal && (
+          <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-center justify-center p-4 overflow-y-auto">
+            <div className="bg-[#121214] border border-brand-gold/40 rounded-3xl max-w-2xl w-full p-6 sm:p-8 space-y-6 my-8 max-h-[90vh] overflow-y-auto shadow-2xl">
+              <div className="flex justify-between items-start border-b border-white/10 pb-4">
+                <div>
+                  <span className="text-[10px] font-mono text-brand-gold uppercase tracking-widest block">Direct Catalog Publisher</span>
+                  <h3 className="font-serif text-2xl text-white">+ Add New Sanctuary</h3>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setShowAddPlaceModal(false)}
+                  className="w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 text-white flex items-center justify-center text-xs"
+                >
+                  ✕
+                </button>
+              </div>
+
+              <form onSubmit={handleCreateNewPlace} className="space-y-6">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div className="space-y-1.5">
+                    <label className="text-xs uppercase font-mono text-white/60">Sanctuary Name *</label>
+                    <input
+                      type="text"
+                      required
+                      placeholder="e.g. Santorini Sunset Cliff Villa"
+                      value={newPlaceForm.name}
+                      onChange={(e) => setNewPlaceForm({ ...newPlaceForm, name: e.target.value })}
+                      className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-white text-sm focus:border-brand-gold focus:outline-none"
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <label className="text-xs uppercase font-mono text-white/60">Country *</label>
+                    <input
+                      type="text"
+                      required
+                      placeholder="e.g. Greece"
+                      value={newPlaceForm.country}
+                      onChange={(e) => setNewPlaceForm({ ...newPlaceForm, country: e.target.value })}
+                      className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-white text-sm focus:border-brand-gold focus:outline-none"
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                  <div className="space-y-1.5">
+                    <label className="text-xs uppercase font-mono text-white/60">City / Region</label>
+                    <input
+                      type="text"
+                      placeholder="e.g. Oia, Thira"
+                      value={newPlaceForm.city}
+                      onChange={(e) => setNewPlaceForm({ ...newPlaceForm, city: e.target.value })}
+                      className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-white text-sm focus:border-brand-gold focus:outline-none"
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <label className="text-xs uppercase font-mono text-white/60">Category</label>
+                    <select
+                      value={newPlaceForm.category}
+                      onChange={(e) => setNewPlaceForm({ ...newPlaceForm, category: e.target.value })}
+                      className="w-full bg-[#1c1c1f] border border-white/10 rounded-xl px-4 py-2.5 text-white text-sm focus:border-brand-gold focus:outline-none"
+                    >
+                      {['Luxury', 'Beach', 'Mountain', 'Historical', 'Cultural', 'Wellness', 'Adventure', 'Wildlife'].map((c) => (
+                        <option key={c} value={c}>{c}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="space-y-1.5">
+                    <label className="text-xs uppercase font-mono text-white/60">Price Per Stay (₹ INR)</label>
+                    <input
+                      type="number"
+                      placeholder="45000"
+                      value={newPlaceForm.priceFrom}
+                      onChange={(e) => setNewPlaceForm({ ...newPlaceForm, priceFrom: e.target.value })}
+                      className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-white text-sm focus:border-brand-gold focus:outline-none font-mono"
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="text-xs uppercase font-mono text-white/60">Description & Concierge Highlights *</label>
+                  <textarea
+                    rows="3"
+                    required
+                    placeholder="Describe the architectural luxury, location highlights, views, and exclusive guest perks..."
+                    value={newPlaceForm.description}
+                    onChange={(e) => setNewPlaceForm({ ...newPlaceForm, description: e.target.value })}
+                    className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-white text-sm focus:border-brand-gold focus:outline-none"
+                  />
+                </div>
+
+                {/* Amenities Checkboxes */}
+                <div className="space-y-2">
+                  <label className="text-xs uppercase font-mono text-white/60">Sanctuary Inclusions & Amenities</label>
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                    {ALL_AMENITY_OPTIONS.map((amenity) => {
+                      const isSelected = (newPlaceForm.amenities || []).includes(amenity.id);
+                      return (
+                        <button
+                          key={amenity.id}
+                          type="button"
+                          onClick={() => toggleNewPlaceAmenity(amenity.id)}
+                          className={`p-2 rounded-xl text-xs flex items-center gap-2 border text-left transition-all ${
+                            isSelected
+                              ? 'bg-brand-gold/20 border-brand-gold text-brand-gold font-semibold'
+                              : 'bg-white/5 border-white/10 text-white/60 hover:border-white/20'
+                          }`}
+                        >
+                          <span>{amenity.icon}</span>
+                          <span className="truncate">{amenity.name}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* Photos & Image Gallery */}
+                <div className="space-y-3 pt-2">
+                  <div className="flex items-center justify-between">
+                    <label className="text-xs uppercase font-mono text-white/60">Photography & Gallery</label>
+                    <button
+                      type="button"
+                      onClick={handleAutoFetchNewPlacePhotos}
+                      disabled={newPlaceUploading}
+                      className="px-3 py-1 rounded-full bg-brand-gold/15 hover:bg-brand-gold text-brand-gold hover:text-black text-[11px] font-mono font-semibold transition-all flex items-center gap-1.5 border border-brand-gold/30 disabled:opacity-50"
+                    >
+                      <span>⚡</span>
+                      <span>Auto-Fetch Photos</span>
+                    </button>
+                  </div>
+
+                  <div className="p-5 border-2 border-dashed border-white/10 rounded-2xl bg-white/[0.02] text-center hover:border-brand-gold/50 transition-colors">
+                    <input
+                      type="file"
+                      id="newPlaceUploadInput"
+                      multiple
+                      accept="image/*"
+                      onChange={handleNewPlaceFileUpload}
+                      disabled={newPlaceUploading}
+                      className="hidden"
+                    />
+                    <label htmlFor="newPlaceUploadInput" className="cursor-pointer inline-flex flex-col items-center gap-2">
+                      <span className="text-3xl">📸</span>
+                      <span className="text-sm text-white font-medium">
+                        {newPlaceUploading ? 'Uploading to Cloudinary...' : 'Click to Upload Original Photos'}
+                      </span>
+                      <span className="text-xs text-white/40">PNG, JPG or WebP</span>
+                    </label>
+                  </div>
+
+                  {newPlaceUploadError && <p className="text-xs text-red-400">⚠️ {newPlaceUploadError}</p>}
+
+                  {/* Thumbnail Previews */}
+                  {newPlaceForm.gallery && newPlaceForm.gallery.length > 0 && (
+                    <div className="grid grid-cols-3 sm:grid-cols-4 gap-2 pt-2">
+                      {newPlaceForm.gallery.map((imgUrl, idx) => (
+                        <div key={idx} className="relative aspect-square rounded-xl overflow-hidden border border-white/10 bg-black/40">
+                          <img src={imgUrl} alt={`New place ${idx}`} className="w-full h-full object-cover" />
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const updated = newPlaceForm.gallery.filter((_, i) => i !== idx);
+                              setNewPlaceForm({
+                                ...newPlaceForm,
+                                gallery: updated,
+                                image: updated[0] || ''
+                              });
+                            }}
+                            className="absolute top-1 right-1 bg-black/80 hover:bg-red-500 text-white rounded-full w-5 h-5 flex items-center justify-center text-[10px]"
+                          >
+                            ✕
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                <div className="flex justify-end gap-3 pt-4 border-t border-white/10">
+                  <button
+                    type="button"
+                    onClick={() => setShowAddPlaceModal(false)}
+                    className="px-6 py-2.5 rounded-full bg-white/10 text-white text-xs font-mono hover:bg-white/20 transition-colors"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={newPlaceSaving || newPlaceUploading}
+                    className="px-8 py-2.5 rounded-full bg-brand-gold text-black text-xs font-bold uppercase tracking-widest hover:bg-white transition-all disabled:opacity-50 shadow-lg"
+                  >
+                    {newPlaceSaving ? 'Publishing...' : 'Publish Sanctuary to Live Catalog ✨'}
+                  </button>
+                </div>
+              </form>
+            </div>
           </div>
         )}
 
@@ -942,7 +1346,7 @@ export default function AdminDashboardPage() {
                       onChange={(e) => setEditingPlace({ ...editingPlace, category: e.target.value })}
                       className="w-full bg-[#1c1c1f] border border-white/10 rounded-xl px-4 py-2.5 text-white text-sm focus:border-brand-gold focus:outline-none"
                     >
-                      {['Beach', 'Mountain', 'Historical', 'Religious', 'Adventure', 'Wildlife', 'Cultural', 'Luxury', 'Other'].map(c => (
+                      {['Beach', 'Mountain', 'Historical', 'Religious', 'Adventure', 'Wildlife', 'Cultural', 'Luxury', 'Other'].map((c) => (
                         <option key={c} value={c}>{c}</option>
                       ))}
                     </select>
@@ -983,7 +1387,6 @@ export default function AdminDashboardPage() {
                   >
                     {placeSaving ? 'Saving Changes...' : 'Save Photos & Details ✨'}
                   </button>
-
                 </div>
               </form>
             </div>
