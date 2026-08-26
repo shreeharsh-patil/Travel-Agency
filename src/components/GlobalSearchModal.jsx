@@ -157,7 +157,7 @@ export default function GlobalSearchModal({ isOpen, onClose }) {
                 <Link
                   to="/suggest-place"
                   onClick={onClose}
-                  className="inline-block px-6 py-2.5 rounded-full bg-brand-gold text-black text-xs font-bold uppercase tracking-widest hover:bg-white transition-colors"
+                  className="inline-block px-6 py-2.5 rounded-full bg-white text-black text-xs font-bold uppercase tracking-widest hover:bg-white/90 transition-all shadow-lg"
                 >
                   + Suggest This Place
                 </Link>

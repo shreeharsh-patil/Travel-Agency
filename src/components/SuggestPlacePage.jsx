@@ -415,7 +415,7 @@ export default function SuggestPlacePage() {
             <button
               type="submit"
               disabled={loading || uploading}
-              className="w-full py-4 rounded-full bg-brand-gold text-black font-bold text-xs uppercase tracking-widest hover:bg-white transition-all shadow-lg disabled:opacity-50"
+              className="w-full py-4 rounded-full bg-white text-black font-bold text-xs uppercase tracking-widest hover:bg-white/90 active:scale-[0.99] transition-all shadow-xl disabled:opacity-50"
             >
               {loading ? 'Submitting Place...' : 'Submit Place for Review ✨'}
             </button>

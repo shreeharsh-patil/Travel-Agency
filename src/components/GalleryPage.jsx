@@ -192,7 +192,7 @@ export default function GalleryPage() {
             <p className="text-sm text-white/60">Be the first to share an original camera photo in this category!</p>
             <button
               onClick={() => setShowUploadModal(true)}
-              className="inline-block rounded-full bg-brand-gold px-6 py-3 text-xs font-bold uppercase tracking-widest text-black transition-colors hover:bg-white"
+              className="inline-block rounded-full bg-white px-6 py-3 text-xs font-bold uppercase tracking-widest text-black transition-colors hover:bg-white/90 shadow-lg"
             >
               + Upload Original Photo
             </button>
@@ -390,7 +390,7 @@ export default function GalleryPage() {
                     <button
                       type="submit"
                       disabled={uploading || !uploadForm.src}
-                      className="px-7 py-2.5 rounded-full bg-brand-gold text-black text-xs font-bold uppercase tracking-widest hover:bg-white transition-colors disabled:opacity-50"
+                      className="px-7 py-2.5 rounded-full bg-white text-black text-xs font-bold uppercase tracking-widest hover:bg-white/90 transition-all disabled:opacity-50 shadow-lg"
                     >
                       {uploading ? 'Saving...' : 'Add to Moments ✨'}
                     </button>

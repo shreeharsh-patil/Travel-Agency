@@ -979,10 +979,11 @@ export default function AdminDashboardPage() {
                   <button
                     type="submit"
                     disabled={placeSaving || placeUploading}
-                    className="px-8 py-2.5 rounded-full bg-brand-gold text-black text-xs font-bold uppercase tracking-widest hover:bg-white transition-colors disabled:opacity-50"
+                    className="px-8 py-2.5 rounded-full bg-white text-black text-xs font-bold uppercase tracking-widest hover:bg-white/90 transition-all disabled:opacity-50 shadow-lg"
                   >
                     {placeSaving ? 'Saving Changes...' : 'Save Photos & Details ✨'}
                   </button>
+
                 </div>
               </form>
             </div>

@@ -275,7 +275,7 @@ export default function LoginPage() {
                             <button
                                 type="submit"
                                 disabled={loading}
-                                className="w-full bg-brand-gold text-black font-sans font-bold uppercase tracking-widest py-4 rounded-full hover:bg-white transition-colors disabled:opacity-60 text-xs shadow-lg shadow-brand-gold/10"
+                                className="w-full bg-white text-black font-sans font-bold uppercase tracking-widest py-4 rounded-full hover:bg-white/90 active:scale-[0.99] transition-all disabled:opacity-60 text-xs shadow-xl shadow-white/5"
                             >
                                 {loading
                                     ? 'Authenticating...'
