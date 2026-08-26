@@ -363,12 +363,12 @@ export default function Header() {
                                                     <span className="truncate">Goa Coastal</span>
                                                 </Link>
                                                 <Link
-                                                    to="/places/swiss-alps"
+                                                    to="/places/aspen"
                                                     onClick={() => setActiveDropdown(null)}
                                                     className="flex items-center gap-1.5 p-1.5 rounded-lg hover:bg-white/10 text-[11px] text-white/80 hover:text-white transition-colors"
                                                 >
                                                     <span>🏔️</span>
-                                                    <span className="truncate">Swiss Alps</span>
+                                                    <span className="truncate">Aspen Chalets</span>
                                                 </Link>
                                                 <Link
                                                     to="/places/kyoto"
@@ -379,7 +379,7 @@ export default function Header() {
                                                     <span className="truncate">Kyoto Zen</span>
                                                 </Link>
                                                 <Link
-                                                    to="/places/amalfi-coast"
+                                                    to="/places/amalfi"
                                                     onClick={() => setActiveDropdown(null)}
                                                     className="flex items-center gap-1.5 p-1.5 rounded-lg hover:bg-white/10 text-[11px] text-white/80 hover:text-white transition-colors"
                                                 >
@@ -1251,13 +1251,13 @@ export default function Header() {
                                                 <Link to="/places/goa" onClick={() => setMenuOpen(false)} className="block py-1">
                                                     🏖️ Goa Coastal Retreats
                                                 </Link>
-                                                <Link to="/places/swiss-alps" onClick={() => setMenuOpen(false)} className="block py-1">
-                                                    🏔️ Swiss Alps Chalets
+                                                <Link to="/places/aspen" onClick={() => setMenuOpen(false)} className="block py-1">
+                                                    🏔️ Aspen Winter Chalets
                                                 </Link>
                                                 <Link to="/places/kyoto" onClick={() => setMenuOpen(false)} className="block py-1">
                                                     ⛩️ Kyoto Zen Temples
                                                 </Link>
-                                                <Link to="/places/amalfi-coast" onClick={() => setMenuOpen(false)} className="block py-1">
+                                                <Link to="/places/amalfi" onClick={() => setMenuOpen(false)} className="block py-1">
                                                     🌊 Amalfi Coast
                                                 </Link>
                                                 <Link

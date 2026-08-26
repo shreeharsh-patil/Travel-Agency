@@ -4,8 +4,91 @@ import { Link, useNavigate } from 'react-router-dom';
 import CurrencyPrice from './CurrencyPrice';
 import { useCurrency } from '../contexts/CurrencyContext';
 import SafeImage from './SafeImage';
+import { destinations } from '../data/destinations';
 
 const RECENT_SEARCHES_KEY = 'horizon_recent_searches';
+
+function searchLocalDestinations(rawQuery) {
+  const query = (rawQuery || '').toLowerCase().trim();
+  if (!query) return [];
+  const tokens = query.split(/\s+/).filter(Boolean);
+  const stems = tokens.map((t) => t.replace(/s$|es$|ing$|ed$/i, ''));
+
+  return destinations
+    .map((d) => {
+      const name = String(d.name || '').toLowerCase();
+      const title = String(d.title || '').toLowerCase();
+      const tagline = String(d.tagline || '').toLowerCase();
+      const country = String(d.country || '').toLowerCase();
+      const city = String(d.city || '').toLowerCase();
+      const state = String(d.state || '').toLowerCase();
+      const category = String(d.category || '').toLowerCase();
+      const desc = String(d.description || '').toLowerCase();
+      const blob = `${name} ${title} ${tagline} ${country} ${city} ${state} ${category} ${desc}`;
+
+      let score = 0;
+      if (name === query) score += 150;
+      else if (name.includes(query)) score += 120;
+      else if (title.includes(query)) score += 100;
+      else if (blob.includes(query)) score += 60;
+
+      let matchedTokens = 0;
+      for (let i = 0; i < tokens.length; i++) {
+        const tok = tokens[i];
+        const stem = stems[i];
+        let found = false;
+
+        if (name.includes(tok)) {
+          score += 45;
+          found = true;
+        } else if (stem.length >= 3 && name.includes(stem)) {
+          score += 35;
+          found = true;
+        }
+
+        if (title.includes(tok) || tagline.includes(tok)) {
+          score += 30;
+          found = true;
+        } else if (stem.length >= 3 && (title.includes(stem) || tagline.includes(stem))) {
+          score += 25;
+          found = true;
+        }
+
+        if (city.includes(tok) || country.includes(tok) || state.includes(tok) || category.includes(tok)) {
+          score += 25;
+          found = true;
+        } else if (stem.length >= 3 && (city.includes(stem) || country.includes(stem) || category.includes(stem))) {
+          score += 20;
+          found = true;
+        }
+
+        if (desc.includes(tok) || (stem.length >= 3 && desc.includes(stem))) {
+          score += 15;
+          found = true;
+        }
+
+        if (found) matchedTokens++;
+      }
+
+      if (matchedTokens === tokens.length) score += 60;
+
+      return {
+        id: d.id || d.slug,
+        slug: d.slug || d.id,
+        name: d.name || d.title,
+        title: d.title || d.name,
+        country: d.country,
+        city: d.city || d.location,
+        category: d.category || 'Destination',
+        price: d.price,
+        priceFrom: d.priceFrom,
+        image: d.image,
+        score
+      };
+    })
+    .filter((item) => item.score > 0)
+    .sort((a, b) => b.score - a.score);
+}
 
 export default function GlobalSearchModal({ isOpen, onClose }) {
   const navigate = useNavigate();
@@ -81,6 +164,20 @@ export default function GlobalSearchModal({ isOpen, onClose }) {
       return;
     }
 
+    // Instant local matching so results appear in 0ms!
+    const localMatches = searchLocalDestinations(query);
+    setResults({
+      places: localMatches,
+      packages: localMatches.map((p) => ({
+        id: `pkg-${p.id}`,
+        title: `${p.name} Exclusive Luxury Package`,
+        placeSlug: p.slug,
+        price: p.price
+      })),
+      experiences: [],
+      guides: []
+    });
+
     setLoading(true);
     setError(null);
     setSelectedIndex(-1);
@@ -95,7 +192,21 @@ export default function GlobalSearchModal({ isOpen, onClose }) {
 
         if (res.ok) {
           const data = await res.json();
-          setResults(data.results || { places: [], packages: [], experiences: [], guides: [] });
+          if (data.results) {
+            // Merge backend places with local matches
+            const placeMap = new Map();
+            (data.results.places || []).forEach((p) => placeMap.set(p.slug || p.id, p));
+            localMatches.forEach((p) => {
+              if (!placeMap.has(p.slug || p.id)) placeMap.set(p.slug || p.id, p);
+            });
+
+            setResults({
+              places: Array.from(placeMap.values()),
+              packages: data.results.packages || [],
+              experiences: data.results.experiences || [],
+              guides: data.results.guides || []
+            });
+          }
         }
 
         if (extRes.ok) {
@@ -107,11 +218,14 @@ export default function GlobalSearchModal({ isOpen, onClose }) {
       } catch (err) {
         if (err.name === 'AbortError') return;
         console.error('Search API error:', err);
-        setError('Could not complete search. Please try again.');
+        // Do not overwrite localMatches with error if local matches exist
+        if (localMatches.length === 0) {
+          setError('Could not complete live search. Please try again.');
+        }
       } finally {
         if (!controller.signal.aborted) setLoading(false);
       }
-    }, 280);
+    }, 200);
 
     return () => {
       clearTimeout(timer);
@@ -284,7 +398,7 @@ export default function GlobalSearchModal({ isOpen, onClose }) {
 
           {/* Body Content */}
           <div ref={resultsContainerRef} className="p-5 sm:p-6 max-h-[62vh] overflow-y-auto font-sans">
-            {loading && (
+            {loading && results.places.length === 0 && (
               <div className="py-12 text-center text-white/60 space-y-3">
                 <div className="w-8 h-8 border-2 border-brand-gold border-t-transparent rounded-full animate-spin mx-auto" />
                 <p className="text-xs uppercase font-mono tracking-widest text-brand-gold">
@@ -293,7 +407,7 @@ export default function GlobalSearchModal({ isOpen, onClose }) {
               </div>
             )}
 
-            {error && (
+            {error && results.places.length === 0 && (
               <div className="p-4 rounded-2xl bg-red-500/10 border border-red-500/30 text-red-300 text-xs text-center font-medium">
                 {error}
               </div>
@@ -371,7 +485,7 @@ export default function GlobalSearchModal({ isOpen, onClose }) {
             )}
 
             {/* Render Flat Filtered Items with Keyboard Selection */}
-            {!loading && query.trim() && totalResultsCount > 0 && (
+            {query.trim() && totalResultsCount > 0 && (
               <div className="space-y-3">
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
                   {flatItems.map((item, idx) => {
