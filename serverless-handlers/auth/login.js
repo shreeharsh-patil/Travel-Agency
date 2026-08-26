@@ -31,8 +31,10 @@ export default async function handler(req, res) {
 
     res.setHeader('Set-Cookie', sessionCookie(token));
     return res.status(200).json({
+      ok: true,
+      token,
       user: {
-        id: user._id.toString(),
+        id: user._id ? user._id.toString() : String(user.id || ''),
         email: user.email,
         name: user.name || '',
         phone: user.phone || '',

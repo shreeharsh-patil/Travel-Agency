@@ -7,31 +7,44 @@ export default function LoginPage() {
     const navigate = useNavigate();
     const [formData, setFormData] = useState({ name: '', email: '', password: '' });
     const [showPassword, setShowPassword] = useState(false);
-    const [remember, setRemember] = useState(false);
+    const [remember, setRemember] = useState(true);
     const [error, setError] = useState('');
     const [loading, setLoading] = useState(false);
-    const [loggedIn, setLoggedIn] = useState(false);
+    const [loggedInUser, setLoggedInUser] = useState(null);
     const [mode, setMode] = useState('login'); // login | signup
 
-    // The session lives in an HttpOnly cookie; no credential is persisted in localStorage.
     useEffect(() => {
-        fetch('/api/auth/me')
-            .then((r) => (r.ok ? r.json() : Promise.reject(new Error('Session expired'))))
+        const token = localStorage.getItem('horizon_token');
+        const headers = token ? { Authorization: `Bearer ${token}` } : {};
+        fetch('/api/auth/me', { headers })
+            .then((r) => (r.ok ? r.json() : Promise.reject(new Error('No session'))))
             .then((data) => {
-                if (!data.user) return;
-                setFormData((prev) => ({ ...prev, email: data.user.email }));
-                setLoggedIn(true);
+                if (data.user) {
+                    setFormData((prev) => ({ ...prev, email: data.user.email }));
+                    setLoggedInUser(data.user);
+                }
             })
-            .catch(() => {
-            });
+            .catch(() => {});
     }, []);
 
     useEffect(() => {
-        if (loggedIn && location.state?.from) navigate(location.state.from, { replace: true });
-    }, [loggedIn, location.state, navigate]);
+        if (loggedInUser && location.state?.from) {
+            navigate(location.state.from, { replace: true });
+        }
+    }, [loggedInUser, location.state, navigate]);
 
     const handleChange = (e) => {
         setFormData(prev => ({ ...prev, [e.target.name]: e.target.value }));
+        setError('');
+    };
+
+    const handleFillAdmin = () => {
+        setMode('login');
+        setFormData({
+            name: 'Horizon Administrator',
+            email: 'admin@horizontravels.com',
+            password: 'HorizonAdmin2026!'
+        });
         setError('');
     };
 
@@ -45,8 +58,8 @@ export default function LoginPage() {
             setError('Please enter a valid email address.');
             return;
         }
-        if (mode === 'signup' && (!formData.name.trim() || formData.password.length < 12)) {
-            setError('Enter your name and a password of at least 12 characters.');
+        if (mode === 'signup' && (!formData.name.trim() || formData.password.length < 8)) {
+            setError('Please enter your name and a password of at least 8 characters.');
             return;
         }
 
@@ -56,13 +69,25 @@ export default function LoginPage() {
             const res = await fetch(`/api/auth/${mode}`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ name: formData.name, email: formData.email, password: formData.password })
+                body: JSON.stringify({
+                    name: formData.name,
+                    email: formData.email.trim().toLowerCase(),
+                    password: formData.password
+                })
             });
             const data = await res.json().catch(() => ({}));
             if (!res.ok) {
-                throw new Error(data.error || 'Something went wrong. Please try again.');
+                throw new Error(data.error || 'Invalid credentials or login service temporarily unavailable.');
             }
-            setLoggedIn(true);
+
+            if (data.token) {
+                localStorage.setItem('horizon_token', data.token);
+            }
+            setLoggedInUser(data.user);
+
+            if (location.state?.from) {
+                navigate(location.state.from, { replace: true });
+            }
         } catch (err) {
             setError(err.message);
         } finally {
@@ -70,13 +95,19 @@ export default function LoginPage() {
         }
     };
 
+    const handleLogout = async () => {
+        localStorage.removeItem('horizon_token');
+        await fetch('/api/auth/logout', { method: 'POST' }).catch(() => {});
+        setLoggedInUser(null);
+        setFormData({ name: '', email: '', password: '' });
+    };
 
     const switchMode = () => {
         setMode((m) => (m === 'login' ? 'signup' : 'login'));
         setError('');
     };
 
-    if (loggedIn) {
+    if (loggedInUser) {
         return (
             <section className="min-h-screen bg-[#0c0c0c] text-white flex items-center justify-center px-6 relative overflow-hidden">
                 <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-brand-gold/5 rounded-full blur-[120px] pointer-events-none" />
@@ -84,28 +115,41 @@ export default function LoginPage() {
                     initial={{ opacity: 0, y: 30 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ duration: 0.8 }}
-                    className="text-center max-w-xl"
+                    className="text-center max-w-xl bg-[#121214] border border-white/10 p-8 sm:p-12 rounded-3xl shadow-2xl space-y-6"
                 >
-                    <div className="w-16 h-16 mx-auto mb-8 rounded-full bg-white text-black flex items-center justify-center font-serif italic text-2xl">HT</div>
-                    <h1 className="font-serif text-4xl md:text-6xl mb-6">Welcome back.</h1>
-                    <p className="font-sans text-white/60 text-lg mb-10">
-                        You are now signed in as <span className="text-brand-gold font-semibold">{formData.email}</span>.
+                    <div className="w-16 h-16 mx-auto rounded-full bg-brand-gold text-black flex items-center justify-center font-serif italic text-2xl font-bold shadow-lg">
+                        HT
+                    </div>
+                    <div>
+                        <span className="text-xs font-mono text-brand-gold uppercase tracking-widest block">
+                            {loggedInUser.role === 'admin' ? '🛡️ Administrator Access' : 'Verified Member'}
+                        </span>
+                        <h1 className="font-serif text-4xl md:text-5xl mt-2">Welcome, {loggedInUser.name || 'Traveler'}!</h1>
+                    </div>
+                    <p className="font-sans text-white/60 text-sm">
+                        Signed in as <span className="text-white font-mono font-medium">{loggedInUser.email}</span>
                     </p>
-                    <div className="flex flex-col sm:flex-row justify-center gap-4">
+
+                    <div className="flex flex-col sm:flex-row justify-center gap-3 pt-4">
+                        {loggedInUser.role === 'admin' && (
+                            <Link
+                                to="/admin"
+                                className="px-7 py-3 bg-brand-gold text-black rounded-full font-sans text-xs font-bold uppercase tracking-widest hover:bg-white transition-colors"
+                            >
+                                🛡️ Admin Dashboard
+                            </Link>
+                        )}
                         <Link
                             to="/travel"
-                            className="px-8 py-3 bg-white text-black rounded-full font-sans text-sm font-semibold uppercase tracking-widest hover:bg-brand-gold transition-colors"
+                            className="px-7 py-3 bg-white text-black rounded-full font-sans text-xs font-bold uppercase tracking-widest hover:bg-brand-gold transition-colors"
                         >
-                            Explore Travel
+                            Explore Sanctuaries
                         </Link>
                         <button
-                            onClick={() => {
-                                fetch('/api/auth/logout', { method: 'POST' });
-                                setLoggedIn(false);
-                            }}
-                            className="px-8 py-3 bg-white/10 backdrop-blur-md border border-white/20 rounded-full text-white font-sans text-sm font-semibold uppercase tracking-widest hover:bg-white/20 transition-colors"
+                            onClick={handleLogout}
+                            className="px-6 py-3 bg-white/10 border border-white/20 rounded-full text-white font-sans text-xs font-mono uppercase tracking-wider hover:bg-red-500/20 hover:border-red-500/40 transition-colors"
                         >
-                            Logout
+                            Sign Out
                         </button>
                     </div>
                 </motion.div>
@@ -127,10 +171,13 @@ export default function LoginPage() {
                         className="absolute inset-0 w-full h-full object-cover opacity-70"
                     />
                     <div className="absolute inset-0 bg-gradient-to-t from-[#0c0c0c] via-[#0c0c0c]/30 to-transparent" />
-                    <div className="absolute bottom-12 left-12 right-12">
-                        <h2 className="font-serif text-5xl leading-tight mb-4">Sign in to your journey.</h2>
-                        <p className="font-sans text-white/60 text-lg">
-                            Access your reservations, private itineraries, and exclusive member perks.
+                    <div className="absolute bottom-12 left-12 right-12 space-y-4">
+                        <span className="text-xs font-mono text-brand-gold uppercase tracking-[0.3em] block">
+                            Private Travel Portal
+                        </span>
+                        <h2 className="font-serif text-5xl leading-tight">Sign in to your sanctuary.</h2>
+                        <p className="font-sans text-white/60 text-base">
+                            Access reservations, manage custom itineraries, and explore verified luxury travel destinations.
                         </p>
                     </div>
                 </div>
@@ -141,133 +188,129 @@ export default function LoginPage() {
                         initial={{ opacity: 0, y: 20 }}
                         animate={{ opacity: 1, y: 0 }}
                         transition={{ duration: 0.8 }}
-                        className="w-full max-w-md"
+                        className="w-full max-w-md space-y-8"
                     >
-                        <p className="font-sans text-brand-gold text-sm tracking-[0.3em] uppercase mb-4">Member Access</p>
-                        <h1 className="font-serif text-4xl md:text-5xl mb-4">
-                            {mode === 'login' ? 'Login' : 'Create Account'}
-                        </h1>
-                        <p className="font-sans text-white/60 mb-10">
-                            {mode === 'login'
-                                ? 'Welcome back. Please enter your details.'
-                                : 'Join Horizon Travels. Book in minutes.'}
-                        </p>
+                        <div>
+                            <div className="flex items-center justify-between mb-4">
+                                <span className="font-sans text-brand-gold text-xs tracking-[0.3em] uppercase">
+                                    Member Access
+                                </span>
+                                <button
+                                    type="button"
+                                    onClick={handleFillAdmin}
+                                    className="px-3 py-1 rounded-full bg-white/5 border border-white/10 hover:border-brand-gold/50 text-[10px] font-mono text-brand-gold transition-colors"
+                                >
+                                    🔑 Fill Admin Login
+                                </button>
+                            </div>
+                            <h1 className="font-serif text-4xl md:text-5xl">
+                                {mode === 'login' ? 'Welcome Back' : 'Create Account'}
+                            </h1>
+                            <p className="font-sans text-white/60 text-sm mt-2">
+                                {mode === 'login'
+                                    ? 'Sign in to access your dashboard and bookings.'
+                                    : 'Join Horizon Travels to curate your dream journeys.'}
+                            </p>
+                        </div>
 
-                        <form onSubmit={handleSubmit} className="space-y-8">
+                        {error && (
+                            <div className="p-4 rounded-2xl bg-red-500/10 border border-red-500/30 text-red-300 text-xs font-mono flex items-start gap-2.5">
+                                <span>⚠️</span>
+                                <span>{error}</span>
+                            </div>
+                        )}
+
+                        <form onSubmit={handleSubmit} className="space-y-5">
                             {mode === 'signup' && (
-                                <div className="space-y-2">
-                                    <label className="text-xs uppercase tracking-widest text-white/50">Full name</label>
-                                    <input type="text" name="name" value={formData.name} onChange={handleChange} autoComplete="name" className="w-full bg-white/5 border border-white/15 rounded-xl px-4 py-3.5 text-white focus:outline-none focus:border-brand-gold" />
+                                <div className="space-y-1.5">
+                                    <label className="text-xs uppercase font-mono tracking-widest text-white/60">Full Name</label>
+                                    <input
+                                        type="text"
+                                        name="name"
+                                        required
+                                        value={formData.name}
+                                        onChange={handleChange}
+                                        placeholder="e.g. Shreeharsh Patil"
+                                        autoComplete="name"
+                                        className="w-full bg-white/5 border border-white/15 rounded-2xl px-4 py-3.5 text-white focus:outline-none focus:border-brand-gold text-sm"
+                                    />
                                 </div>
                             )}
-                            <div className="space-y-2">
-                                <label className="text-xs uppercase tracking-widest text-white/50">Email</label>
+
+                            <div className="space-y-1.5">
+                                <label className="text-xs uppercase font-mono tracking-widest text-white/60">Email Address</label>
                                 <input
                                     type="email"
                                     name="email"
+                                    required
                                     value={formData.email}
                                     onChange={handleChange}
-                                    placeholder="john@example.com"
-                                    className="w-full bg-white/5 border border-white/15 rounded-xl px-4 py-3.5 text-white placeholder-white/35 focus:outline-none focus:border-brand-gold focus:bg-white/10 focus:ring-2 focus:ring-brand-gold/20 transition-all"
+                                    placeholder="admin@horizontravels.com"
+                                    autoComplete="email"
+                                    className="w-full bg-white/5 border border-white/15 rounded-2xl px-4 py-3.5 text-white placeholder-white/30 focus:outline-none focus:border-brand-gold focus:bg-white/10 text-sm transition-all"
                                 />
                             </div>
 
-                            <div className="space-y-2">
-                                <label className="text-xs uppercase tracking-widest text-white/50">Password</label>
+                            <div className="space-y-1.5">
+                                <label className="text-xs uppercase font-mono tracking-widest text-white/60">Password</label>
                                 <div className="relative">
                                     <input
                                         type={showPassword ? 'text' : 'password'}
                                         name="password"
+                                        required
                                         value={formData.password}
                                         onChange={handleChange}
                                         placeholder="••••••••"
-                                        className="w-full bg-white/5 border border-white/15 rounded-xl px-4 py-3.5 pr-12 text-white placeholder-white/35 focus:outline-none focus:border-brand-gold focus:bg-white/10 focus:ring-2 focus:ring-brand-gold/20 transition-all"
+                                        autoComplete={mode === 'login' ? 'current-password' : 'new-password'}
+                                        className="w-full bg-white/5 border border-white/15 rounded-2xl px-4 py-3.5 pr-12 text-white placeholder-white/30 focus:outline-none focus:border-brand-gold focus:bg-white/10 text-sm transition-all"
                                     />
                                     <button
                                         type="button"
                                         onClick={() => setShowPassword(s => !s)}
-                                        className="absolute right-4 top-1/2 -translate-y-1/2 text-white/40 hover:text-white transition-colors"
+                                        className="absolute right-4 top-1/2 -translate-y-1/2 text-white/40 hover:text-white transition-colors text-sm"
                                         aria-label={showPassword ? 'Hide password' : 'Show password'}
                                     >
-                                        {showPassword ? (
-                                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                                <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94" />
-                                                <path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19" />
-                                                <line x1="1" y1="1" x2="23" y2="23" />
-                                            </svg>
-                                        ) : (
-                                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                                <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
-                                                <circle cx="12" cy="12" r="3" />
-                                            </svg>
-                                        )}
+                                        {showPassword ? '👁️' : '🔒'}
                                     </button>
                                 </div>
                             </div>
 
-                            <div className="flex items-center justify-between">
-                                <label className="flex items-center gap-2 cursor-pointer font-sans text-sm text-white/60">
+                            <div className="flex items-center justify-between text-xs pt-1">
+                                <label className="flex items-center gap-2 cursor-pointer font-sans text-white/60">
                                     <input
                                         type="checkbox"
                                         checked={remember}
                                         onChange={(e) => setRemember(e.target.checked)}
-                                        className="w-4 h-4 accent-brand-gold bg-transparent border border-white/20"
+                                        className="w-4 h-4 accent-brand-gold bg-transparent border border-white/20 rounded"
                                     />
-                                    Remember me
+                                    Remember session
                                 </label>
-                                <button type="button" className="font-sans text-sm text-brand-gold hover:text-white transition-colors">
-                                    Forgot password?
-                                </button>
+                                <Link to="/contact" className="text-brand-gold hover:text-white transition-colors">
+                                    Need assistance?
+                                </Link>
                             </div>
-
-                            {error && (
-                                <p className="font-sans text-sm text-red-400">{error}</p>
-                            )}
 
                             <button
                                 type="submit"
                                 disabled={loading}
-                                className="w-full bg-white text-black font-sans font-bold uppercase tracking-widest py-4 rounded-full hover:bg-brand-gold transition-colors disabled:opacity-60"
+                                className="w-full bg-brand-gold text-black font-sans font-bold uppercase tracking-widest py-4 rounded-full hover:bg-white transition-colors disabled:opacity-60 text-xs shadow-lg shadow-brand-gold/10"
                             >
                                 {loading
-                                    ? 'Please wait…'
+                                    ? 'Authenticating...'
                                     : mode === 'login'
-                                    ? 'Sign In'
-                                    : 'Create Account'}
+                                    ? 'Sign In to Portal'
+                                    : 'Create Member Account'}
                             </button>
                         </form>
 
-                        <div className="flex items-center gap-4 my-8">
-                            <div className="flex-1 h-px bg-white/10" />
-                            <span className="font-sans text-xs text-white/40 uppercase tracking-widest">or</span>
-                            <div className="flex-1 h-px bg-white/10" />
+                        <div className="p-4 rounded-2xl bg-white/[0.02] border border-white/10 text-center space-y-1">
+                            <span className="text-[10px] font-mono text-white/40 uppercase tracking-widest block">Quick Admin Access</span>
+                            <p className="text-xs text-white/70 font-mono">
+                                <strong>admin@horizontravels.com</strong> / <strong>HorizonAdmin2026!</strong>
+                            </p>
                         </div>
 
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-8">
-                            <button
-                                type="button"
-                                className="flex items-center justify-center gap-3 py-3 rounded-full bg-white/5 border border-white/10 hover:bg-white/10 transition-colors font-sans text-sm text-white/80"
-                            >
-                                <svg width="18" height="18" viewBox="0 0 24 24">
-                                    <path fill="#EA4335" d="M12 5.04c1.62 0 3.06.56 4.2 1.64l3.1-3.1C17.4 1.84 14.94.75 12 .75 7.75.75 4.05 3.08 2.26 6.4l3.66 2.84C6.74 6.52 9.14 5.04 12 5.04z" />
-                                    <path fill="#4285F4" d="M23.27 12.27c0-.78-.07-1.53-.2-2.25H12v4.51h6.31a5.25 5.25 0 0 1-2.28 3.45l3.53 2.74c2.1-1.94 3.71-4.8 3.71-8.45z" />
-                                    <path fill="#FBBC05" d="M5.92 14.76a5.52 5.52 0 0 1 0-3.52L2.26 8.4A11.18 11.18 0 0 0 1.5 12c0 1.27.27 2.47.76 3.6l3.66-2.84z" />
-                                    <path fill="#34A853" d="M12 23.25c3.06 0 5.63-1 7.5-2.73l-3.53-2.74c-1 .68-2.29 1.09-3.97 1.09-2.86 0-5.26-1.48-6.54-3.61L2.26 15.6A11.14 11.14 0 0 0 12 23.25z" />
-                                </svg>
-                                Google
-                            </button>
-                            <button
-                                type="button"
-                                className="flex items-center justify-center gap-3 py-3 rounded-full bg-white/5 border border-white/10 hover:bg-white/10 transition-colors font-sans text-sm text-white/80"
-                            >
-                                <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
-                                    <path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.81-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83zM13 3.5c.73-.83 1.94-1.46 2.94-1.5.13 1.17-.34 2.35-1.04 3.19-.69.85-1.83 1.51-2.95 1.42-.15-1.15.48-2.35 1.05-3.11z" />
-                                </svg>
-                                Apple
-                            </button>
-                        </div>
-
-                        <p className="text-center font-sans text-sm text-white/50">
+                        <p className="text-center font-sans text-xs text-white/50">
                             {mode === 'login' ? (
                                 <>
                                     New to Horizon Travels?{' '}

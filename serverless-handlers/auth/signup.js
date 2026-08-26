@@ -14,14 +14,8 @@ export default async function handler(req, res) {
   if (!/^\S+@\S+\.\S+$/.test(String(email)) || String(email).length > 254) {
     return res.status(400).json({ error: 'Please enter a valid email address.' });
   }
-  if (typeof password !== 'string' || password.length < 12 || !/[A-Za-z]/.test(password) || !/\d/.test(password)) {
-    return res.status(400).json({ error: 'Use a password of at least 12 characters with letters and numbers.' });
-  }
-  if (!process.env.MONGODB_URI) {
-    return res.status(503).json({ error: 'Database connection is not configured. Please set MONGODB_URI in Vercel Environment Variables.' });
-  }
-  if (!process.env.JWT_SECRET) {
-    return res.status(503).json({ error: 'Authentication secret is not configured. Please set JWT_SECRET in Vercel Environment Variables.' });
+  if (typeof password !== 'string' || password.length < 8) {
+    return res.status(400).json({ error: 'Use a password of at least 8 characters.' });
   }
 
   try {
@@ -47,11 +41,12 @@ export default async function handler(req, res) {
       createdAt: new Date(),
     });
 
-
-    const token = signToken({ _id: result.insertedId, email: normalizedEmail });
+    const token = signToken({ _id: result.insertedId, email: normalizedEmail, role: 'user', name });
 
     res.setHeader('Set-Cookie', sessionCookie(token));
     return res.status(201).json({
+      ok: true,
+      token,
       user: {
         id: result.insertedId.toString(),
         email: normalizedEmail,
@@ -61,6 +56,6 @@ export default async function handler(req, res) {
     });
   } catch (err) {
     console.error('[signup]', err);
-    return res.status(503).json({ error: 'Account creation is temporarily unavailable. Please try again shortly.' });
+    return res.status(500).json({ error: 'Account creation is temporarily unavailable. Please try again shortly.' });
   }
 }
