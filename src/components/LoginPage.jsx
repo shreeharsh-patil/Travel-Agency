@@ -38,15 +38,6 @@ export default function LoginPage() {
         setError('');
     };
 
-    const handleFillAdmin = () => {
-        setMode('login');
-        setFormData({
-            name: 'Horizon Administrator',
-            email: 'admin@horizontravels.com',
-            password: 'HorizonAdmin2026!'
-        });
-        setError('');
-    };
 
     const handleSubmit = async (e) => {
         e.preventDefault();
@@ -191,18 +182,9 @@ export default function LoginPage() {
                         className="w-full max-w-md space-y-8"
                     >
                         <div>
-                            <div className="flex items-center justify-between mb-4">
-                                <span className="font-sans text-brand-gold text-xs tracking-[0.3em] uppercase">
-                                    Member Access
-                                </span>
-                                <button
-                                    type="button"
-                                    onClick={handleFillAdmin}
-                                    className="px-3 py-1 rounded-full bg-white/5 border border-white/10 hover:border-brand-gold/50 text-[10px] font-mono text-brand-gold transition-colors"
-                                >
-                                    🔑 Fill Admin Login
-                                </button>
-                            </div>
+                            <span className="font-sans text-brand-gold text-xs tracking-[0.3em] uppercase block mb-4">
+                                Member Access
+                            </span>
                             <h1 className="font-serif text-4xl md:text-5xl">
                                 {mode === 'login' ? 'Welcome Back' : 'Create Account'}
                             </h1>
@@ -245,7 +227,7 @@ export default function LoginPage() {
                                     required
                                     value={formData.email}
                                     onChange={handleChange}
-                                    placeholder="admin@horizontravels.com"
+                                    placeholder="traveler@example.com"
                                     autoComplete="email"
                                     className="w-full bg-white/5 border border-white/15 rounded-2xl px-4 py-3.5 text-white placeholder-white/30 focus:outline-none focus:border-brand-gold focus:bg-white/10 text-sm transition-all"
                                 />
@@ -303,12 +285,6 @@ export default function LoginPage() {
                             </button>
                         </form>
 
-                        <div className="p-4 rounded-2xl bg-white/[0.02] border border-white/10 text-center space-y-1">
-                            <span className="text-[10px] font-mono text-white/40 uppercase tracking-widest block">Quick Admin Access</span>
-                            <p className="text-xs text-white/70 font-mono">
-                                <strong>admin@horizontravels.com</strong> / <strong>HorizonAdmin2026!</strong>
-                            </p>
-                        </div>
 
                         <p className="text-center font-sans text-xs text-white/50">
                             {mode === 'login' ? (
