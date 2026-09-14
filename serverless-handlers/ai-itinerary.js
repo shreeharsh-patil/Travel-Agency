@@ -100,6 +100,7 @@ const ITINERARY_TEMPLATES = {
 };
 
 export function generateCustomItinerary(destination, numDays = 4, category = 'Luxury') {
+  const travelStyle = String(category || 'Luxury').trim();
   const clean = String(destination).toLowerCase().trim();
   let base = ITINERARY_TEMPLATES[clean];
 
@@ -133,7 +134,7 @@ export function generateCustomItinerary(destination, numDays = 4, category = 'Lu
       day: i + 1,
       title: titles[i] || `Day ${i + 1} Immersion`,
       morning: `Morning excursion exploring scenic highlights and historic quarters of ${destination}.`,
-      afternoon: `Curated local experience, artisan culinary tasting, and relaxation at the sanctuary.`,
+      afternoon: `Curated ${travelStyle.toLowerCase()} experience, artisan culinary tasting, and relaxation at the sanctuary.`,
       sunset: `Panoramic golden hour vantage point overlooking ${destination}.`,
       dinner: `Fine dining evening enjoying signature regional gastronomy and wines.`
     });

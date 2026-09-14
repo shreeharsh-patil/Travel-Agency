@@ -1,7 +1,6 @@
 import { connectToDatabase, COLLECTIONS } from '../lib/db.js';
 import { getTokenFromReq, verifyToken } from '../lib/auth.js';
 import { destinations } from '../src/data/destinations.js';
-import { fetchOriginalPlaceImage } from './external-images.js';
 
 export default async function handler(req, res) {
   // GET: Fetch places (Public approved places or Admin list)

@@ -1,5 +1,5 @@
 import { connectToDatabase, COLLECTIONS } from '../lib/db.js';
-import { getTokenFromReq, verifyToken } from '../lib/auth.js';
+import { authenticateRequest } from '../lib/requestAuth.js';
 import { getWikimediaTravelGallery } from '../lib/travel/galleryProvider.js';
 
 export default async function handler(req, res) {
@@ -28,6 +28,9 @@ export default async function handler(req, res) {
   }
 
   if (req.method === 'POST') {
+    const auth = await authenticateRequest(req, res);
+    if (!auth) return;
+
     const { src, alt, category, caption } = req.body || {};
     if (!src) {
       return res.status(400).json({ error: 'An image URL or Cloudinary photo is required.' });
@@ -46,6 +49,7 @@ export default async function handler(req, res) {
         approvedAt: new Date(),
         sortOrder: 0,
         createdAt: new Date(),
+        submittedBy: auth.id,
       };
       const result = await db.collection(COLLECTIONS.gallery).insertOne(doc);
 
@@ -57,16 +61,19 @@ export default async function handler(req, res) {
   }
 
   if (req.method === 'DELETE') {
+    const auth = await authenticateRequest(req, res, { admin: true });
+    if (!auth) return;
+
     const { id } = req.query || req.body || {};
     if (!id) return res.status(400).json({ error: 'Image ID is required.' });
 
     try {
       const { db } = await connectToDatabase();
       const { ObjectId } = await import('mongodb');
-      let query = { $or: [{ id: id }, { id: Number(id) }] };
-      try {
-        query.$or.push({ _id: new ObjectId(id) });
-      } catch {}
+      const query = { $or: [{ id }, { id: Number(id) }] };
+      if (ObjectId.isValid(String(id))) {
+        query.$or.push({ _id: new ObjectId(String(id)) });
+      }
 
       await db.collection(COLLECTIONS.gallery).deleteOne(query);
       return res.status(200).json({ ok: true, message: 'Gallery image removed.' });

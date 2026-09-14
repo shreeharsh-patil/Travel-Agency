@@ -106,7 +106,7 @@ export default async function handler(req, res) {
 
   let data = EMERGENCY_DIRECTORIES[clean];
   if (!data) {
-    for (const [key, val] of Object.entries(EMERGENCY_DIRECTORIES)) {
+    for (const val of Object.values(EMERGENCY_DIRECTORIES)) {
       if (val.destinations.some((d) => d.toLowerCase().includes(clean)) || val.country.toLowerCase().includes(clean)) {
         data = val;
         break;
