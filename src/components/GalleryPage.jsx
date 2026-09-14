@@ -7,7 +7,7 @@ export default function GalleryPage() {
   const [images, setImages] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const [source, setSource] = useState('');
+  const [, setSource] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('All');
 
   // Upload Modal State

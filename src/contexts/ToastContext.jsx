@@ -46,7 +46,6 @@ export function ToastProvider({ children }) {
             const isSuccess = t.type === 'success';
             const isError = t.type === 'error';
             const isWarning = t.type === 'warning';
-            const isInfo = t.type === 'info';
 
             const borderColor = isSuccess
               ? 'border-brand-gold/40'

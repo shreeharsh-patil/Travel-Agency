@@ -313,7 +313,9 @@ export default function PlaceDetailPage() {
       const res = await fetch(`/api/visa-requirements?destination=${encodeURIComponent(slug)}&passport=${passportCode}`);
       const data = await res.json();
       if (data.requirements) setVisaData(data.requirements);
-    } catch {}
+    } catch (err) {
+      console.warn('[visa] Could not load visa requirements:', err);
+    }
   };
 
   useEffect(() => {

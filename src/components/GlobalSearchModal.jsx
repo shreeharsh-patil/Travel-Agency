@@ -97,9 +97,9 @@ export default function GlobalSearchModal({ isOpen, onClose }) {
   const [query, setQuery] = useState('');
   const [activeTab, setActiveTab] = useState('all'); // 'all' | 'places' | 'packages' | 'experiences'
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState(null);
+  const [, setError] = useState(null);
   const [results, setResults] = useState({ places: [], packages: [], experiences: [], guides: [] });
-  const [externalPlaces, setExternalPlaces] = useState([]);
+  const [, setExternalPlaces] = useState([]);
   const [selectedIndex, setSelectedIndex] = useState(-1);
   const [recentSearches, setRecentSearches] = useState([]);
 
