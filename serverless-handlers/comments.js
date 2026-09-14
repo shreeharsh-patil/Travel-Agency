@@ -114,8 +114,7 @@ export default async function handler(req, res) {
     try {
       const { place_id, admin } = req.query || {};
       if (admin) {
-        const moderator = await authenticateRequest(req, res, { admin: true });
-        if (!moderator) return;
+        if (!(await authenticateRequest(req, res, { admin: true }))) return;
       }
       const authUser = getAuthUser(req);
 
@@ -209,8 +208,7 @@ export default async function handler(req, res) {
 
     // Admin moderation path
     if (status) {
-      const moderator = await authenticateRequest(req, res, { admin: true });
-      if (!moderator) return;
+      if (!(await authenticateRequest(req, res, { admin: true }))) return;
       if (!['APPROVED', 'REJECTED', 'PENDING'].includes(status)) {
         return res.status(400).json({ error: 'Invalid comment status.' });
       }

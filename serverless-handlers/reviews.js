@@ -87,8 +87,7 @@ export default async function handler(req, res) {
     try {
       const { place_id, status, admin } = req.query || {};
       if (status || admin) {
-        const auth = await authenticateRequest(req, res, { admin: true });
-        if (!auth) return;
+        if (!(await authenticateRequest(req, res, { admin: true }))) return;
       }
 
       const filter = {};
@@ -219,8 +218,7 @@ export default async function handler(req, res) {
 
   // PATCH: Admin approve / reject review
   if (req.method === 'PATCH') {
-    const auth = await authenticateRequest(req, res, { admin: true });
-    if (!auth) return;
+    if (!(await authenticateRequest(req, res, { admin: true }))) return;
 
     const { id, status } = req.body || {};
     if (!id || !['APPROVED', 'REJECTED', 'PENDING'].includes(status)) {
@@ -239,8 +237,7 @@ export default async function handler(req, res) {
 
   // DELETE: Delete review
   if (req.method === 'DELETE') {
-    const auth = await authenticateRequest(req, res, { admin: true });
-    if (!auth) return;
+    if (!(await authenticateRequest(req, res, { admin: true }))) return;
 
     const { id } = req.query || {};
     if (!id) return res.status(400).json({ error: 'Review ID required' });

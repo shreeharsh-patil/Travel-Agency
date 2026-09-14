@@ -37,8 +37,7 @@ export default async function handler(req, res) {
       const { id, admin } = req.query || {};
       const adminView = admin === 'true';
       if (adminView) {
-        const moderator = await authenticateRequest(req, res, { admin: true });
-        if (!moderator) return;
+        if (!(await authenticateRequest(req, res, { admin: true }))) return;
       }
 
       if (id) {
@@ -84,8 +83,7 @@ export default async function handler(req, res) {
 
   // POST: create an article (admin only)
   if (req.method === 'POST') {
-    const auth = await authenticateRequest(req, res, { admin: true });
-    if (!auth) return;
+    if (!(await authenticateRequest(req, res, { admin: true }))) return;
 
     const { title, excerpt, content, image, category, author, published } = req.body || {};
     if (!title || !content) {
@@ -117,8 +115,7 @@ export default async function handler(req, res) {
 
   // PATCH: update an article (admin only)
   if (req.method === 'PATCH') {
-    const auth = await authenticateRequest(req, res, { admin: true });
-    if (!auth) return;
+    if (!(await authenticateRequest(req, res, { admin: true }))) return;
 
     const { id, title, excerpt, content, image, category, author, published } = req.body || {};
     if (!id) return res.status(400).json({ error: 'Article ID is required.' });
@@ -147,8 +144,7 @@ export default async function handler(req, res) {
 
   // DELETE: remove an article (admin only)
   if (req.method === 'DELETE') {
-    const auth = await authenticateRequest(req, res, { admin: true });
-    if (!auth) return;
+    if (!(await authenticateRequest(req, res, { admin: true }))) return;
 
     const { id } = req.query || {};
     if (!id) return res.status(400).json({ error: 'Article ID is required.' });

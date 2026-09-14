@@ -16,8 +16,7 @@ export default async function handler(req, res) {
     try {
       const { status, slug } = req.query || {};
       if (status && status !== 'APPROVED') {
-        const moderator = await authenticateRequest(req, res, { admin: true });
-        if (!moderator) return;
+        if (!(await authenticateRequest(req, res, { admin: true }))) return;
       }
       let placesColl = null;
       try {
@@ -32,8 +31,7 @@ export default async function handler(req, res) {
         const dbPlace = placesColl ? await placesColl.findOne({ $or: [{ slug }, { id: slug }] }) : null;
         if (dbPlace) {
           if (dbPlace.status && dbPlace.status !== 'APPROVED') {
-            const moderator = await authenticateRequest(req, res, { admin: true });
-            if (!moderator) return;
+            if (!(await authenticateRequest(req, res, { admin: true }))) return;
           }
           return res.status(200).json({ place: dbPlace });
         }
@@ -152,8 +150,7 @@ export default async function handler(req, res) {
 
   // PATCH: Admin Approve / Reject / Edit Place
   if (req.method === 'PATCH') {
-    const moderator = await authenticateRequest(req, res, { admin: true });
-    if (!moderator) return;
+    if (!(await authenticateRequest(req, res, { admin: true }))) return;
 
     const { id, status, admin_notes, name, country, description, category, priceFrom, image, gallery, amenities } = req.body || {};
 
@@ -207,8 +204,7 @@ export default async function handler(req, res) {
 
   // DELETE: Delete a Place
   if (req.method === 'DELETE') {
-    const moderator = await authenticateRequest(req, res, { admin: true });
-    if (!moderator) return;
+    if (!(await authenticateRequest(req, res, { admin: true }))) return;
 
     const { id } = req.query || {};
     if (!id) {
