@@ -1,12 +1,24 @@
+import { ObjectId } from 'mongodb';
 import { connectToDatabase, COLLECTIONS } from '../lib/db.js';
-import { getTokenFromReq, verifyToken } from '../lib/auth.js';
+import { authenticateRequest } from '../lib/requestAuth.js';
 import { destinations } from '../src/data/destinations.js';
+
+function placeIdFilter(id) {
+  const value = String(id || '').trim();
+  const filters = [{ id: value }, { slug: value }, { _id: value }];
+  if (ObjectId.isValid(value)) filters.unshift({ _id: new ObjectId(value) });
+  return { $or: filters };
+}
 
 export default async function handler(req, res) {
   // GET: Fetch places (Public approved places or Admin list)
   if (req.method === 'GET') {
     try {
       const { status, slug } = req.query || {};
+      if (status && status !== 'APPROVED') {
+        const moderator = await authenticateRequest(req, res, { admin: true });
+        if (!moderator) return;
+      }
       let placesColl = null;
       try {
         const { db } = await connectToDatabase();
@@ -19,6 +31,10 @@ export default async function handler(req, res) {
         // Find single place by slug or id
         const dbPlace = placesColl ? await placesColl.findOne({ $or: [{ slug }, { id: slug }] }) : null;
         if (dbPlace) {
+          if (dbPlace.status && dbPlace.status !== 'APPROVED') {
+            const moderator = await authenticateRequest(req, res, { admin: true });
+            if (!moderator) return;
+          }
           return res.status(200).json({ place: dbPlace });
         }
         const staticPlace = destinations.find((d) => d.slug === slug || d.id === slug);
@@ -59,19 +75,10 @@ export default async function handler(req, res) {
 
   // POST: Create / Suggest / Add a Place (Admin or Authenticated users)
   if (req.method === 'POST') {
-    const token = getTokenFromReq(req);
-    if (!token) {
-      return res.status(401).json({ error: 'Authentication required to add a place.' });
-    }
+    const auth = await authenticateRequest(req, res);
+    if (!auth) return;
 
-    let authUser;
-    try {
-      authUser = verifyToken(token);
-    } catch {
-      return res.status(401).json({ error: 'Invalid authentication token.' });
-    }
-
-    const isAdmin = authUser.role === 'admin' || authUser.email === 'shreeharsh@gmail.com';
+    const isAdmin = auth.user.role === 'admin';
 
     const {
       name,
@@ -117,8 +124,8 @@ export default async function handler(req, res) {
       google_maps_url: google_maps_url || `https://maps.google.com/?q=${encodeURIComponent(name + ' ' + country)}`,
       price: formattedPrice,
       priceFrom: numericPrice,
-      submitted_by_user_id: authUser.sub,
-      submitted_by_name: authUser.name || (authUser.email ? authUser.email.split('@')[0] : 'Admin'),
+      submitted_by_user_id: auth.id,
+      submitted_by_name: auth.user.name || (auth.user.email ? auth.user.email.split('@')[0] : 'Traveler'),
       status: placeStatus,
       admin_notes: isAdmin ? 'Added directly by Admin' : '',
       approved_by: isAdmin ? 'admin' : null,
@@ -138,17 +145,16 @@ export default async function handler(req, res) {
         place: { _id: result.insertedId || `place-${Date.now()}`, ...newPlace }
       });
     } catch (err) {
-      console.warn('[POST /api/places] DB insert notice:', err.message);
-      // Fallback return for offline execution
-      return res.status(201).json({
-        message: 'Sanctuary created successfully!',
-        place: { _id: `place-${Date.now()}`, ...newPlace }
-      });
+      console.error('[POST /api/places]', err);
+      return res.status(503).json({ error: 'Could not save this place right now.' });
     }
   }
 
   // PATCH: Admin Approve / Reject / Edit Place
   if (req.method === 'PATCH') {
+    const moderator = await authenticateRequest(req, res, { admin: true });
+    if (!moderator) return;
+
     const { id, status, admin_notes, name, country, description, category, priceFrom, image, gallery, amenities } = req.body || {};
 
     if (!id) {
@@ -187,27 +193,23 @@ export default async function handler(req, res) {
       const { db } = await connectToDatabase();
       const placesColl = db.collection(COLLECTIONS.places);
 
-      const filter = /^[a-f\d]{24}$/i.test(String(id)) ? { _id: id } : { $or: [{ id }, { slug: id }, { _id: id }] };
-      const result = await placesColl.updateOne(filter, { $set: updateFields });
-
+      const result = await placesColl.updateOne(placeIdFilter(id), { $set: updateFields });
       if (result.matchedCount === 0) {
-        // If not in DB, upsert it
-        await placesColl.updateOne(
-          { slug: id },
-          { $set: { slug: id, ...updateFields } },
-          { upsert: true }
-        );
+        return res.status(404).json({ error: 'Place not found.' });
       }
 
       return res.status(200).json({ message: 'Place updated successfully.' });
     } catch (err) {
       console.error('[PATCH /api/places]', err);
-      return res.status(200).json({ message: 'Place updated successfully.' });
+      return res.status(500).json({ error: 'Could not update place.' });
     }
   }
 
   // DELETE: Delete a Place
   if (req.method === 'DELETE') {
+    const moderator = await authenticateRequest(req, res, { admin: true });
+    if (!moderator) return;
+
     const { id } = req.query || {};
     if (!id) {
       return res.status(400).json({ error: 'Place ID is required.' });
@@ -216,12 +218,12 @@ export default async function handler(req, res) {
     try {
       const { db } = await connectToDatabase();
       const placesColl = db.collection(COLLECTIONS.places);
-      const filter = /^[a-f\d]{24}$/i.test(String(id)) ? { _id: id } : { $or: [{ id }, { slug: id }, { _id: id }] };
-      await placesColl.deleteOne(filter);
+      const result = await placesColl.deleteOne(placeIdFilter(id));
+      if (!result.deletedCount) return res.status(404).json({ error: 'Place not found.' });
       return res.status(200).json({ message: 'Place deleted successfully.' });
     } catch (err) {
       console.error('[DELETE /api/places]', err);
-      return res.status(200).json({ message: 'Place removed.' });
+      return res.status(500).json({ error: 'Could not delete place.' });
     }
   }
 

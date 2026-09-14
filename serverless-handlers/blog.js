@@ -1,5 +1,6 @@
+import { ObjectId } from 'mongodb';
 import { connectToDatabase, COLLECTIONS } from '../lib/db.js';
-import { getTokenFromReq, verifyToken } from '../lib/auth.js';
+import { authenticateRequest } from '../lib/requestAuth.js';
 import { blogData } from '../src/data/blogData.js';
 
 /**
@@ -11,6 +12,12 @@ import { blogData } from '../src/data/blogData.js';
  *  - PATCH  /api/blog             (auth) update a post
  *  - DELETE /api/blog?id=         (auth) delete a post
  */
+
+function postIdFilter(id) {
+  const value = String(id || '').trim();
+  if (ObjectId.isValid(value)) return { $or: [{ _id: new ObjectId(value) }, { _id: value }] };
+  return { _id: value };
+}
 
 function makeSlug(title) {
   const slug = String(title || '')
@@ -28,14 +35,20 @@ export default async function handler(req, res) {
   if (req.method === 'GET') {
     try {
       const { id, admin } = req.query || {};
+      const adminView = admin === 'true';
+      if (adminView) {
+        const moderator = await authenticateRequest(req, res, { admin: true });
+        if (!moderator) return;
+      }
 
       if (id) {
-        const post = await blogColl.findOne({ _id: id });
+        const idFilter = postIdFilter(id);
+        const post = await blogColl.findOne(adminView ? idFilter : { $and: [idFilter, { published: true }] });
         if (!post) return res.status(404).json({ error: 'Article not found.' });
         return res.status(200).json({ post });
       }
 
-      const filter = admin === 'true' ? {} : { published: true };
+      const filter = adminView ? {} : { published: true };
       const cursor = await blogColl.find(filter);
       let posts = await cursor.sort({ created_at: -1 }).toArray();
 
@@ -69,17 +82,10 @@ export default async function handler(req, res) {
     }
   }
 
-  // POST: create an article (requires a signed-in user)
+  // POST: create an article (admin only)
   if (req.method === 'POST') {
-    const token = getTokenFromReq(req);
-    if (!token) return res.status(401).json({ error: 'Please sign in to write.' });
-
-    let payload;
-    try {
-      payload = verifyToken(token);
-    } catch {
-      return res.status(401).json({ error: 'Invalid session.' });
-    }
+    const auth = await authenticateRequest(req, res, { admin: true });
+    if (!auth) return;
 
     const { title, excerpt, content, image, category, author, published } = req.body || {};
     if (!title || !content) {
@@ -94,7 +100,7 @@ export default async function handler(req, res) {
       content: String(content).trim(),
       image: image || '/images/swiss_alps.png',
       category: category || 'Journal',
-      author: String(author || payload.email || 'Horizon Curators').trim(),
+      author: String(author || auth.user.name || auth.user.email || 'Horizon Curators').trim(),
       published: published !== false,
       created_at: now,
       updated_at: now,
@@ -109,16 +115,10 @@ export default async function handler(req, res) {
     }
   }
 
-  // PATCH: update an article (auth)
+  // PATCH: update an article (admin only)
   if (req.method === 'PATCH') {
-    const token = getTokenFromReq(req);
-    if (!token) return res.status(401).json({ error: 'Please sign in to edit.' });
-
-    try {
-      verifyToken(token);
-    } catch {
-      return res.status(401).json({ error: 'Invalid session.' });
-    }
+    const auth = await authenticateRequest(req, res, { admin: true });
+    if (!auth) return;
 
     const { id, title, excerpt, content, image, category, author, published } = req.body || {};
     if (!id) return res.status(400).json({ error: 'Article ID is required.' });
@@ -136,7 +136,7 @@ export default async function handler(req, res) {
     if (published !== undefined) update.published = published !== false;
 
     try {
-      const result = await blogColl.updateOne({ _id: id }, { $set: update });
+      const result = await blogColl.updateOne(postIdFilter(id), { $set: update });
       if (!result.matchedCount) return res.status(404).json({ error: 'Article not found.' });
       return res.status(200).json({ message: 'Article updated.' });
     } catch (err) {
@@ -145,22 +145,17 @@ export default async function handler(req, res) {
     }
   }
 
-  // DELETE: remove an article (auth)
+  // DELETE: remove an article (admin only)
   if (req.method === 'DELETE') {
-    const token = getTokenFromReq(req);
-    if (!token) return res.status(401).json({ error: 'Please sign in.' });
-
-    try {
-      verifyToken(token);
-    } catch {
-      return res.status(401).json({ error: 'Invalid session.' });
-    }
+    const auth = await authenticateRequest(req, res, { admin: true });
+    if (!auth) return;
 
     const { id } = req.query || {};
     if (!id) return res.status(400).json({ error: 'Article ID is required.' });
 
     try {
-      await blogColl.deleteOne({ _id: id });
+      const result = await blogColl.deleteOne(postIdFilter(id));
+      if (!result.deletedCount) return res.status(404).json({ error: 'Article not found.' });
       return res.status(200).json({ message: 'Article deleted.' });
     } catch (err) {
       console.error('[DELETE /api/blog]', err);
