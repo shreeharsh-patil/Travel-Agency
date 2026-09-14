@@ -1,5 +1,6 @@
+import { ObjectId } from 'mongodb';
 import { connectToDatabase, COLLECTIONS } from '../lib/db.js';
-import { getTokenFromReq, verifyToken } from '../lib/auth.js';
+import { authenticateRequest } from '../lib/requestAuth.js';
 
 const INITIAL_AUTHENTIC_REVIEWS = [
   {
@@ -56,6 +57,12 @@ const INITIAL_AUTHENTIC_REVIEWS = [
   }
 ];
 
+function recordIdFilter(id) {
+  const value = String(id || '').trim();
+  if (ObjectId.isValid(value)) return { $or: [{ _id: new ObjectId(value) }, { _id: value }] };
+  return { _id: value };
+}
+
 export default async function handler(req, res) {
   let reviewsColl;
   try {
@@ -78,13 +85,17 @@ export default async function handler(req, res) {
   // GET: Fetch reviews for a place (or all reviews for admin moderation)
   if (req.method === 'GET') {
     try {
-      const { place_id, status } = req.query || {};
+      const { place_id, status, admin } = req.query || {};
+      if (status || admin) {
+        const auth = await authenticateRequest(req, res, { admin: true });
+        if (!auth) return;
+      }
 
       const filter = {};
       if (place_id) filter.place_id = place_id;
       if (status) {
         filter.status = status;
-      } else if (!req.query.admin) {
+      } else if (!admin) {
         filter.status = 'APPROVED';
       }
 
@@ -122,7 +133,7 @@ export default async function handler(req, res) {
       return res.status(200).json({
         reviews,
         totalCount: reviews.length,
-        averageRating: avgRating || 4.8,
+        averageRating: reviews.length > 0 ? avgRating : null,
         ratingBreakdown,
         ratingDistribution: distribution
       });
@@ -134,17 +145,8 @@ export default async function handler(req, res) {
 
   // POST: Submit a Review (Authenticated users)
   if (req.method === 'POST') {
-    const token = getTokenFromReq(req);
-    if (!token) {
-      return res.status(401).json({ error: 'Please sign in to write a review.' });
-    }
-
-    let authUser;
-    try {
-      authUser = verifyToken(token);
-    } catch {
-      return res.status(401).json({ error: 'Invalid or expired session. Please sign in again.' });
-    }
+    const auth = await authenticateRequest(req, res);
+    if (!auth) return;
 
     const { place_id, rating, title, comment, images } = req.body || {};
 
@@ -152,7 +154,10 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: 'Place ID, rating (1-5), title, and review comment are required.' });
     }
 
-    const numericRating = Math.min(5, Math.max(1, parseInt(rating, 10) || 5));
+    const numericRating = Number(rating);
+    if (!Number.isFinite(numericRating) || numericRating < 1 || numericRating > 5) {
+      return res.status(400).json({ error: 'Rating must be between 1 and 5.' });
+    }
 
     // Only allow http(s) image URLs or compressed data:image payloads —
     // never javascript:/text/html schemes, and cap per-image byte size.
@@ -174,19 +179,19 @@ export default async function handler(req, res) {
 
     const existing = await reviewsColl.findOne({
       place_id,
-      user_id: authUser.sub
+      user_id: auth.id
     });
 
     if (existing) {
       return res.status(400).json({ error: 'You have already submitted a review for this destination.' });
     }
 
-    const userName = authUser.email ? authUser.email.split('@')[0] : 'Traveler';
+    const userName = auth.user.name || (auth.user.email ? auth.user.email.split('@')[0] : 'Traveler');
     const userAvatar = `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(userName)}`;
 
     const newReview = {
       place_id,
-      user_id: authUser.sub,
+      user_id: auth.id,
       user_name: userName,
       user_avatar: userAvatar,
       rating: numericRating,
@@ -214,11 +219,17 @@ export default async function handler(req, res) {
 
   // PATCH: Admin approve / reject review
   if (req.method === 'PATCH') {
+    const auth = await authenticateRequest(req, res, { admin: true });
+    if (!auth) return;
+
     const { id, status } = req.body || {};
-    if (!id || !status) return res.status(400).json({ error: 'Review ID and status required' });
+    if (!id || !['APPROVED', 'REJECTED', 'PENDING'].includes(status)) {
+      return res.status(400).json({ error: 'Valid review ID and status are required.' });
+    }
 
     try {
-      await reviewsColl.updateOne({ _id: id }, { $set: { status, updated_at: new Date().toISOString() } });
+      const result = await reviewsColl.updateOne(recordIdFilter(id), { $set: { status, updated_at: new Date().toISOString() } });
+      if (!result.matchedCount) return res.status(404).json({ error: 'Review not found.' });
       return res.status(200).json({ message: `Review status updated to ${status}` });
     } catch (err) {
       console.error('[PATCH /api/reviews]', err);
@@ -228,11 +239,15 @@ export default async function handler(req, res) {
 
   // DELETE: Delete review
   if (req.method === 'DELETE') {
+    const auth = await authenticateRequest(req, res, { admin: true });
+    if (!auth) return;
+
     const { id } = req.query || {};
     if (!id) return res.status(400).json({ error: 'Review ID required' });
 
     try {
-      await reviewsColl.deleteOne({ _id: id });
+      const result = await reviewsColl.deleteOne(recordIdFilter(id));
+      if (!result.deletedCount) return res.status(404).json({ error: 'Review not found.' });
       return res.status(200).json({ message: 'Review deleted' });
     } catch (err) {
       console.error('[DELETE /api/reviews]', err);

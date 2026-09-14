@@ -1,5 +1,7 @@
+import { ObjectId } from 'mongodb';
 import { connectToDatabase, COLLECTIONS } from '../lib/db.js';
 import { getTokenFromReq, verifyToken } from '../lib/auth.js';
+import { authenticateRequest } from '../lib/requestAuth.js';
 
 const INITIAL_COMMENTS = [
   {
@@ -60,6 +62,12 @@ function getAuthUser(req) {
   }
 }
 
+function recordIdFilter(id) {
+  const value = String(id || '').trim();
+  if (ObjectId.isValid(value)) return { $or: [{ _id: new ObjectId(value) }, { _id: value }] };
+  return { _id: value };
+}
+
 // Build a threaded comment tree from a flat list.
 function buildThread(flatComments) {
   const byId = new Map();
@@ -105,6 +113,10 @@ export default async function handler(req, res) {
   if (req.method === 'GET') {
     try {
       const { place_id, admin } = req.query || {};
+      if (admin) {
+        const moderator = await authenticateRequest(req, res, { admin: true });
+        if (!moderator) return;
+      }
       const authUser = getAuthUser(req);
 
       const filter = {};
@@ -146,17 +158,8 @@ export default async function handler(req, res) {
 
   // POST: Add a comment or reply (Authenticated users)
   if (req.method === 'POST') {
-    const token = getTokenFromReq(req);
-    if (!token) {
-      return res.status(401).json({ error: 'Please sign in to comment on a destination.' });
-    }
-
-    let authUser;
-    try {
-      authUser = verifyToken(token);
-    } catch {
-      return res.status(401).json({ error: 'Invalid or expired session. Please sign in again.' });
-    }
+    const auth = await authenticateRequest(req, res);
+    if (!auth) return;
 
     const { place_id, text, parent_id } = req.body || {};
     if (!place_id || !text || !String(text).trim()) {
@@ -165,18 +168,18 @@ export default async function handler(req, res) {
 
     // If replying, ensure the parent comment exists.
     if (parent_id) {
-      const parent = await commentsColl.findOne({ _id: parent_id });
+      const parent = await commentsColl.findOne(recordIdFilter(parent_id));
       if (!parent) {
         return res.status(400).json({ error: 'The comment you are replying to no longer exists.' });
       }
     }
 
-    const userName = authUser.email ? authUser.email.split('@')[0] : 'Traveler';
+    const userName = auth.user.name || (auth.user.email ? auth.user.email.split('@')[0] : 'Traveler');
     const userAvatar = `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(userName)}`;
 
     const newComment = {
       place_id,
-      user_id: authUser.sub,
+      user_id: auth.id,
       user_name: userName,
       user_avatar: userAvatar,
       text: String(text).trim(),
@@ -206,8 +209,14 @@ export default async function handler(req, res) {
 
     // Admin moderation path
     if (status) {
+      const moderator = await authenticateRequest(req, res, { admin: true });
+      if (!moderator) return;
+      if (!['APPROVED', 'REJECTED', 'PENDING'].includes(status)) {
+        return res.status(400).json({ error: 'Invalid comment status.' });
+      }
       try {
-        await commentsColl.updateOne({ _id: id }, { $set: { status, updated_at: new Date().toISOString() } });
+        const result = await commentsColl.updateOne(recordIdFilter(id), { $set: { status, updated_at: new Date().toISOString() } });
+        if (!result.matchedCount) return res.status(404).json({ error: 'Comment not found.' });
         return res.status(200).json({ message: `Comment status updated to ${status}` });
       } catch (err) {
         console.error('[PATCH /api/comments]', err);
@@ -217,33 +226,24 @@ export default async function handler(req, res) {
 
     // Like / unlike path (authenticated)
     if (action === 'like' || action === 'unlike') {
-      const token = getTokenFromReq(req);
-      if (!token) {
-        return res.status(401).json({ error: 'Please sign in to like comments.' });
-      }
-
-      let authUser;
-      try {
-        authUser = verifyToken(token);
-      } catch {
-        return res.status(401).json({ error: 'Invalid or expired session. Please sign in again.' });
-      }
+      const auth = await authenticateRequest(req, res);
+      if (!auth) return;
 
       try {
-        const existing = await commentsColl.findOne({ _id: id });
+        const existing = await commentsColl.findOne(recordIdFilter(id));
         if (!existing) {
           return res.status(404).json({ error: 'Comment not found.' });
         }
 
         const likes = Array.isArray(existing.likes) ? existing.likes : [];
-        const alreadyLiked = likes.includes(authUser.sub);
+        const alreadyLiked = likes.includes(auth.id);
         const liked = action === 'like' ? !alreadyLiked : false;
 
         const nextLikes = liked
-          ? [...likes.filter((uid) => uid !== authUser.sub), authUser.sub]
-          : likes.filter((uid) => uid !== authUser.sub);
+          ? [...likes.filter((uid) => uid !== auth.id), auth.id]
+          : likes.filter((uid) => uid !== auth.id);
 
-        await commentsColl.updateOne({ _id: id }, { $set: { likes: nextLikes, updated_at: new Date().toISOString() } });
+        await commentsColl.updateOne(recordIdFilter(id), { $set: { likes: nextLikes, updated_at: new Date().toISOString() } });
 
         return res.status(200).json({
           message: liked ? 'Comment liked' : 'Like removed',
@@ -262,12 +262,20 @@ export default async function handler(req, res) {
 
   // DELETE: Delete comment
   if (req.method === 'DELETE') {
+    const auth = await authenticateRequest(req, res);
+    if (!auth) return;
+
     const { id } = req.query || {};
     if (!id) return res.status(400).json({ error: 'Comment ID required' });
 
     try {
-      await commentsColl.deleteOne({ _id: id });
-      await commentsColl.deleteMany({ parent_id: id });
+      const existing = await commentsColl.findOne(recordIdFilter(id));
+      if (!existing) return res.status(404).json({ error: 'Comment not found.' });
+      if (String(existing.user_id) !== auth.id && auth.user.role !== 'admin') {
+        return res.status(403).json({ error: 'You can only delete your own comments.' });
+      }
+      await commentsColl.deleteOne(recordIdFilter(id));
+      await commentsColl.deleteMany({ parent_id: String(id) });
       return res.status(200).json({ message: 'Comment and replies deleted' });
     } catch (err) {
       console.error('[DELETE /api/comments]', err);
