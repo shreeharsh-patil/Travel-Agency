@@ -14,9 +14,7 @@ export default function LoginPage() {
     const [mode, setMode] = useState('login'); // login | signup
 
     useEffect(() => {
-        const token = localStorage.getItem('horizon_token');
-        const headers = token ? { Authorization: `Bearer ${token}` } : {};
-        fetch('/api/auth/me', { headers })
+        fetch('/api/auth/me')
             .then((r) => (r.ok ? r.json() : Promise.reject(new Error('No session'))))
             .then((data) => {
                 if (data.user) {
@@ -63,7 +61,8 @@ export default function LoginPage() {
                 body: JSON.stringify({
                     name: formData.name,
                     email: formData.email.trim().toLowerCase(),
-                    password: formData.password
+                    password: formData.password,
+                    remember
                 })
             });
             const data = await res.json().catch(() => ({}));
@@ -71,9 +70,6 @@ export default function LoginPage() {
                 throw new Error(data.error || 'Invalid credentials or login service temporarily unavailable.');
             }
 
-            if (data.token) {
-                localStorage.setItem('horizon_token', data.token);
-            }
             setLoggedInUser(data.user);
 
             if (location.state?.from) {
@@ -87,7 +83,6 @@ export default function LoginPage() {
     };
 
     const handleLogout = async () => {
-        localStorage.removeItem('horizon_token');
         await fetch('/api/auth/logout', { method: 'POST' }).catch(() => {});
         setLoggedInUser(null);
         setFormData({ name: '', email: '', password: '' });
