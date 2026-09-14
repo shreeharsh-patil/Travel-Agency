@@ -21,8 +21,6 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  const { origin = 'delhi', destination = 'paris' } = req.query || {};
-
   const now = new Date();
 
   const liveClocks = TIMEZONE_REGISTRY.map((tz) => {

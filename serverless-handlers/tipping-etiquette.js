@@ -115,7 +115,7 @@ export default async function handler(req, res) {
 
   let matched = ETIQUETTE_DATABASE[query];
   if (!matched) {
-    for (const [key, val] of Object.entries(ETIQUETTE_DATABASE)) {
+    for (const val of Object.values(ETIQUETTE_DATABASE)) {
       if (val.destinations.some((d) => d.toLowerCase().includes(query)) || val.country.toLowerCase().includes(query)) {
         matched = val;
         break;
