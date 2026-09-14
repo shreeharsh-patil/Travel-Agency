@@ -202,7 +202,6 @@ export default async function handler(req, res) {
       ];
     }
 
-    const qLower = query.toLowerCase();
     // Filter curated experiences & guides
     const experiences = [
       { id: 'exp-1', title: `Private Sunset Catamaran Cruise in ${matchedPlaces[0]?.name || query}`, location: matchedPlaces[0]?.country || 'Coastal Escapes', category: 'Boating', price: '₹18,500' },

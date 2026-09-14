@@ -1,3 +1,4 @@
+import { ObjectId } from 'mongodb';
 import { connectToDatabase, COLLECTIONS } from '../lib/db.js';
 import { getTokenFromReq, verifyToken } from '../lib/auth.js';
 
@@ -13,6 +14,13 @@ import { getTokenFromReq, verifyToken } from '../lib/auth.js';
 
 function generateShareId() {
   return `HZ-${Math.random().toString(36).slice(2, 8).toUpperCase()}`;
+}
+
+function ownedTripFilter(id, userId) {
+  const value = String(id || '').trim();
+  const idFilters = [{ _id: value }];
+  if (ObjectId.isValid(value)) idFilters.unshift({ _id: new ObjectId(value) });
+  return { userId, $or: idFilters };
 }
 
 export default async function handler(req, res) {
@@ -176,7 +184,7 @@ export default async function handler(req, res) {
 
     try {
       const result = await tripsColl.updateOne(
-        { _id: id, userId: payload.sub },
+        ownedTripFilter(id, payload.sub),
         { $set: { published: Boolean(published), updated_at: new Date().toISOString() } }
       );
       if (result.matchedCount === 0) {
@@ -209,7 +217,10 @@ export default async function handler(req, res) {
     }
 
     try {
-      await tripsColl.deleteOne({ _id: id, userId: payload.sub });
+      const result = await tripsColl.deleteOne(ownedTripFilter(id, payload.sub));
+      if (result.deletedCount === 0) {
+        return res.status(404).json({ error: 'Trip not found or not yours.' });
+      }
       return res.status(200).json({ message: 'Trip deleted.' });
     } catch (err) {
       console.error('[DELETE /api/trips]', err);

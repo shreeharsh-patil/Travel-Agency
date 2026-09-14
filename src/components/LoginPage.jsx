@@ -47,8 +47,8 @@ export default function LoginPage() {
             setError('Please enter a valid email address.');
             return;
         }
-        if (mode === 'signup' && (!formData.name.trim() || formData.password.length < 8)) {
-            setError('Please enter your name and a password of at least 8 characters.');
+        if (mode === 'signup' && (!formData.name.trim() || formData.password.length < 12 || !/[A-Za-z]/.test(formData.password) || !/\d/.test(formData.password))) {
+            setError('Please enter your name and a password of at least 12 characters with letters and numbers.');
             return;
         }
 
