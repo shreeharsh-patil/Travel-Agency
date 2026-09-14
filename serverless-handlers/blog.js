@@ -83,7 +83,8 @@ export default async function handler(req, res) {
 
   // POST: create an article (admin only)
   if (req.method === 'POST') {
-    if (!(await authenticateRequest(req, res, { admin: true }))) return;
+    const auth = await authenticateRequest(req, res, { admin: true });
+    if (!auth) return;
 
     const { title, excerpt, content, image, category, author, published } = req.body || {};
     if (!title || !content) {
